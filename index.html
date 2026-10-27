@@ -87,6 +87,41 @@
   .corner.tl { left: 20px; top: 18px; font-family: "Anton", sans-serif; font-size: 15px; letter-spacing: 0.12em; color: var(--ink); }
   .corner.bl { left: 20px; right: 20px; bottom: 18px; line-height: 1.6; }
 
+  /* 배경 프로필 (임시 정보, 구슬 굴절 확인용) */
+  .profile { margin-bottom: 18px; color: var(--ink); letter-spacing: 0; }
+  .profile p { margin: 0; }
+  .p-role { font-size: 13px; font-weight: 600; letter-spacing: 0.14em; color: var(--accent); }
+  .p-name {
+    font-family: "Anton", sans-serif;
+    font-size: clamp(44px, 8vw, 120px);
+    line-height: 1;
+    letter-spacing: 0.01em;
+    margin: 6px 0 10px !important;
+  }
+  .p-meta { font-size: 15px; line-height: 1.7; color: var(--ink-soft); }
+  .p-meta b { font-weight: 600; color: var(--ink); }
+  @media (max-height: 560px) {
+    .profile { display: none; }
+  }
+
+  /* 임시: 기획서 페이지 링크 */
+  .draft-btn {
+    position: fixed;
+    top: 14px;
+    right: 16px;
+    z-index: 5;
+    padding: 7px 14px;
+    border: 1px solid var(--ink);
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--bg) 60%, transparent);
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .draft-btn:hover { background: var(--ink); color: var(--bg); }
+  .draft-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
   /* ---------- 물리 스테이지 ---------- */
   #stage {
     position: fixed;
@@ -250,7 +285,15 @@
     <div class="blob"></div><div class="blob"></div><div class="blob"></div><div class="blob"></div>
   </div>
   <div class="corner tl" aria-hidden="true">PORTFOLIO</div>
-  <div class="corner bl" aria-hidden="true" id="hint">줄을 끝까지 당겼다 놓으면 열려요 · 유리구슬은 잡고 던질 수 있어요</div>
+  <a class="draft-btn" href="plan-draft.html">plan-draft</a>
+  <footer class="corner bl">
+    <div class="profile">
+      <p class="p-role">INTERACTION DESIGNER · FRONT-END</p>
+      <p class="p-name">KIM HANEUL</p>
+      <p class="p-meta"><b>haneul.kim@example.com</b><br>Seoul, KR — 새로운 프로젝트 문의 환영해요</p>
+    </div>
+    <p id="hint" aria-hidden="true" style="margin:0">줄을 끝까지 당겼다 놓으면 열려요 · 유리구슬은 잡고 던질 수 있어요</p>
+  </footer>
 
   <div id="stage" aria-hidden="true">
     <canvas id="ropes"></canvas>
