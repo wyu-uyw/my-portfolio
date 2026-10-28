@@ -22,15 +22,9 @@
     --overlay-bg: rgba(3, 86, 252, 0.78);
     --font: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
 
-    /* + 패턴 타일 (선 2개, 픽셀 중앙 정렬로 선명하게) */
+    /* + 패턴 타일 (선 2개, 픽셀 중앙 정렬로 선명하게). 모든 화면에서 24px (자수 격자와 공유) */
     --grid: 24px;
     --plus-tile: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Cpath d='M12.5 9v7M9 12.5h7' stroke='%23000' stroke-width='1'/%3E%3C/svg%3E");
-  }
-  @media (max-width: 640px) {
-    :root {
-      --grid: 20px;
-      --plus-tile: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Cpath d='M10.5 7v7M7 10.5h7' stroke='%23000' stroke-width='1'/%3E%3C/svg%3E");
-    }
   }
 
   * { box-sizing: border-box; }
@@ -58,9 +52,12 @@
       var(--bg);
   }
   .plus,
-  .plus-glow {
+  #plus-glow,
+  #stitches {
     position: absolute;
     inset: 0;
+    width: 100%;
+    height: 100%;
     pointer-events: none;
   }
   /* 패턴 모양은 마스크로, 색은 배경색으로 → 색을 CSS 변수로 관리 */
@@ -69,21 +66,12 @@
     mask-image: var(--plus-tile);
     -webkit-mask-size: var(--grid) var(--grid);
     mask-size: var(--grid) var(--grid);
-    -webkit-mask-position: 0 0;
-    mask-position: 0 0;
+    /* 화면 중앙 셀 (0,0) 기준으로 격자 정렬 — JS가 --grid-ox/oy 설정 */
+    -webkit-mask-position: var(--grid-ox, 0px) var(--grid-oy, 0px);
+    mask-position: var(--grid-ox, 0px) var(--grid-oy, 0px);
   }
   .plus.dim { background: var(--plus-dim); }
-  .plus.bright { background: var(--plus-bright); }
-  /* 구슬 주변만 보이게 (smoothstep 감쇠를 그라데이션 정지점으로 근사) */
-  .plus-glow {
-    --gx: -999px;
-    --gy: -999px;
-    --gr: 175px;
-    -webkit-mask-image: radial-gradient(circle var(--gr) at var(--gx) var(--gy),
-      #000 0%, rgba(0,0,0,.9) 20%, rgba(0,0,0,.65) 40%, rgba(0,0,0,.35) 60%, rgba(0,0,0,.1) 80%, transparent 100%);
-    mask-image: radial-gradient(circle var(--gr) at var(--gx) var(--gy),
-      #000 0%, rgba(0,0,0,.9) 20%, rgba(0,0,0,.65) 40%, rgba(0,0,0,.35) 60%, rgba(0,0,0,.1) 80%, transparent 100%);
-  }
+  /* 구슬 주변 + 는 canvas(#plus-glow)에 밝기·크기를 함께 바꿔 그린다 */
 
   .corner {
     position: fixed;
@@ -100,16 +88,20 @@
   /* 배경 프로필 (임시 정보, 구슬 굴절 확인용) */
   .profile { margin-bottom: 18px; color: var(--text); letter-spacing: 0; }
   .profile p { margin: 0; }
-  .p-role { font-size: 13px; font-weight: 500; letter-spacing: 0.16em; color: var(--text-soft); }
+  .p-role { font-size: 13px; font-weight: 500; letter-spacing: 0.16em; color: var(--accent); }
   .p-name {
     font-weight: 300;
     font-size: clamp(44px, 8vw, 120px);
     line-height: 1;
     letter-spacing: 0.02em;
     margin: 6px 0 10px !important;
+    color: var(--text);
+    /* 노랑 얇은 외곽선 — stroke를 글자 뒤에 칠해 바깥쪽 절반만 보이게 */
+    -webkit-text-stroke: 1.5px var(--accent);
+    paint-order: stroke fill;
   }
-  .p-meta { font-size: 15px; line-height: 1.7; color: var(--text-soft); }
-  .p-meta b { font-weight: 500; color: var(--text); }
+  .p-meta { font-size: 15px; line-height: 1.7; color: var(--accent); }
+  .p-meta b { font-weight: 500; color: var(--accent); }
   @media (max-height: 560px) {
     .profile { display: none; }
   }
@@ -295,7 +287,8 @@
 
   <div id="bg" aria-hidden="true">
     <div class="plus dim"></div>
-    <div class="plus-glow" id="plus-glow"><div class="plus bright"></div></div>
+    <canvas id="plus-glow"></canvas>
+    <canvas id="stitches"></canvas>
   </div>
   <div class="corner tl" aria-hidden="true">PORTFOLIO</div>
   <a class="draft-btn" href="plan-draft.html">plan-draft</a>
@@ -365,8 +358,11 @@
 
   const CAT = { WALL: 0x1, ROPE: 0x2, BALL: 0x4 };
   const FONT_SCALE = 0.95;   // 보이는 글자 크기 배율 (물리 바디 크기는 그대로)
-  const LETTER_GAP = 0.16;   // 세로 글자 사이 간격 (폰트 크기 대비)
-  const GLOW = { range: 2.5, follow: 0.15 };   // + 패턴 밝기 범위(구슬 반지름 배수), 따라오는 lerp
+  // 비즈발: 글자(구슬) 크기 배율, 글자 사이 실 마디 수, 그 마디 간격 배율, 글자 잡기 여유 반경(px)
+  const BEAD = { size: 0.5, gapSegs: 3, gapScale: 0.8, hitPad: 18 };
+  // 구슬 주변 + 패턴: 밝기 범위(구슬 반지름 배수), 따라오는 lerp, 중심에서의 최대 확대 배율
+  const GLOW = { range: 2.5, follow: 0.15, maxScale: 2.2 };
+  const PLUS_SIZE = 7;       // 기본 + 크기(px)
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const supportsLens = !!(navigator.userAgentData &&
     navigator.userAgentData.brands.some((b) => /Chromium/i.test(b.brand)));
@@ -404,10 +400,11 @@
     const scale = Math.min(1.15, Math.max(0.6, H / 900));
     const segLen = CONFIG.rope.segmentLength * scale;
     const longest = Math.max(...CONFIG.menus.map((m) => m.label.length));
-    // 가장 긴 메뉴가 화면 높이의 ~85% 안에 들어오도록 폰트 크기 제한
-    const byHeight = (H * 0.85 - CONFIG.rope.segments * segLen) / (longest * (0.9 + LETTER_GAP));
-    const font = Math.max(22, Math.min(64, H * 0.06, spacing * 0.75 / 0.72, byHeight));
-    return { n, spacing, segLen, font, lw: font * 0.72, lh: font * 0.9, gap: Math.max(1, font * LETTER_GAP) };
+    // 가장 긴 메뉴(줄 + 글자 + 글자 사이 실)가 화면 높이의 ~85% 안에 들어오도록 폰트 크기 제한
+    const threadLen = (CONFIG.rope.segments + (longest - 1) * BEAD.gapSegs * BEAD.gapScale) * segLen;
+    const byHeight = (H * 0.85 - threadLen) / (longest * 0.9);
+    const font = Math.max(12, Math.min(Math.min(64, H * 0.06, spacing * 0.75 / 0.72) * BEAD.size, byHeight));
+    return { n, spacing, segLen, font, lw: font * 0.72, lh: font * 0.9 };
   }
 
   function glassRadius() {
@@ -452,10 +449,23 @@
     wrap.className = "rope";
     lettersEl.appendChild(wrap);
 
+    // 글자 = 실에 꿴 구슬. 글자 사이에도 실 마디를 넣어 구슬이 틈으로 빠지지 않게 한다.
+    const gapStep = m.segLen * BEAD.gapScale; // 글자 사이 실 마디 간격 (마디 반지름은 segR 유지 → 틈 없음)
     const letters = [];
+    const gaps = [];                          // gaps[i] = letters[i]와 letters[i+1] 사이 실 마디
     const els = [];
     y += segR + m.lh / 2;
     for (const ch of menu.label) {
+      if (letters.length) {
+        const gap = [];
+        y -= m.lh / 2;
+        for (let g = 0; g < BEAD.gapSegs; g++) {
+          y += g === 0 ? gapStep / 2 : gapStep;
+          gap.push(Bodies.circle(ax, y, segR, bodyOpts));
+        }
+        gaps.push(gap);
+        y += gapStep / 2 + m.lh / 2;
+      }
       letters.push(Bodies.rectangle(ax, y, m.lw, m.lh, { ...bodyOpts, chamfer: { radius: m.lw * 0.12 } }));
       const el = document.createElement("span");
       el.className = "letter";
@@ -465,9 +475,9 @@
       el.style.fontSize = m.font * FONT_SCALE + "px";
       wrap.appendChild(el);
       els.push(el);
-      y += m.lh + m.gap;
+      y += m.lh;
     }
-    const nominalY = y - m.gap - m.lh / 2;
+    const nominalY = y - m.lh / 2;
 
     const k = CONFIG.rope.stiffness;
     const d = CONFIG.rope.damping;
@@ -484,24 +494,31 @@
       length: segR, stiffness: k, damping: d,
     }));
     for (let i = 1; i < letters.length; i++) {
+      const gap = gaps[i - 1];
       links.push(Constraint.create({
-        bodyA: letters[i - 1], pointA: { x: 0, y: m.lh / 2 },
-        bodyB: letters[i], pointB: { x: 0, y: -m.lh / 2 },
-        length: m.gap, stiffness: k, damping: d,
+        bodyA: letters[i - 1], pointA: { x: 0, y: m.lh / 2 }, bodyB: gap[0],
+        length: gapStep / 2, stiffness: k, damping: d,
+      }));
+      for (let g = 1; g < gap.length; g++) {
+        links.push(Constraint.create({ bodyA: gap[g - 1], bodyB: gap[g], length: gapStep, stiffness: k, damping: d }));
+      }
+      links.push(Constraint.create({
+        bodyA: gap[gap.length - 1], bodyB: letters[i], pointB: { x: 0, y: -m.lh / 2 },
+        length: gapStep / 2, stiffness: k, damping: d,
       }));
     }
 
-    Composite.add(world, [...segs, ...letters, anchor, ...links]);
+    Composite.add(world, [...segs, ...gaps.flat(), ...letters, anchor, ...links]);
 
     return {
-      menu, index, ax, segs, letters, anchor, links, wrap, els,
-      lh: m.lh, lw: m.lw,
+      menu, index, ax, segs, gaps, letters, anchor, links, wrap, els,
+      lh: m.lh, lw: m.lw, tail: m.segLen,
       restY: nominalY, progress: 0, snapped: false,
     };
   }
 
   function removeRope(rope) {
-    Composite.remove(world, [...rope.segs, ...rope.letters, ...rope.links]);
+    Composite.remove(world, [...rope.segs, ...rope.gaps.flat(), ...rope.letters, ...rope.links]);
     if (!rope.snapped) Composite.remove(world, rope.anchor);
     rope.wrap.remove();
   }
@@ -512,7 +529,7 @@
   }
 
   function ropeBodies() {
-    return ropes.flatMap((r) => [...r.segs, ...r.letters]);
+    return ropes.flatMap((r) => [...r.segs, ...r.gaps.flat(), ...r.letters]);
   }
 
   // ------------------------------------------------------------------
@@ -618,7 +635,9 @@
     if (Vector.magnitude(Vector.sub(p, ball.position)) <= ballR) return { body: ball, rope: null };
     for (const rope of ropes) {
       if (rope.snapped) continue;
-      const hit = Query.point(rope.letters, p)[0];
+      // 글자가 작아졌으므로 글자 중심 근처(hitPad)까지 잡히게
+      const hit = Query.point(rope.letters, p)[0] ||
+        rope.letters.find((b) => Vector.magnitude(Vector.sub(p, b.position)) <= rope.lh / 2 + BEAD.hitPad);
       if (hit) return { body: hit, rope };
     }
     return null;
@@ -749,6 +768,13 @@
   let dpr = 1;
   let ropeColor = "";
   let accentColor = "";
+  const glowCanvas = document.getElementById("plus-glow");
+  const gctx = glowCanvas.getContext("2d");
+  const glow = { x: null, y: null, r: 0, box: null };
+  let grid = 24;
+  let plusBright = "";
+  // 셀 (col,row)의 + 중심 = origin + (col,row) × grid. 화면 중앙이 (0,0), 픽셀 중앙(+0.5) 정렬.
+  const origin = { x: 0, y: 0 };
 
   function sizeCanvas() {
     dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -757,6 +783,18 @@
     const cs = getComputedStyle(document.documentElement);
     ropeColor = cs.getPropertyValue("--rope").trim();
     accentColor = cs.getPropertyValue("--accent").trim();
+    glowCanvas.width = canvas.width;
+    glowCanvas.height = canvas.height;
+    grid = parseFloat(cs.getPropertyValue("--grid")) || 24;
+    plusBright = cs.getPropertyValue("--plus-bright").trim();
+    glow.r = 0;       // 다음 프레임에 다시 그리기
+    glow.box = null;
+    origin.x = Math.round(W / 2) + 0.5;
+    origin.y = Math.round(H / 2) + 0.5;
+    // SVG 타일 안 + 중심이 (grid/2 + 0.5)이므로 타일 왼쪽 위 = origin - grid/2 - 0.5
+    const root = document.documentElement.style;
+    root.setProperty("--grid-ox", origin.x - grid / 2 - 0.5 + "px");
+    root.setProperty("--grid-oy", origin.y - grid / 2 - 0.5 + "px");
   }
 
   function drawRopes() {
@@ -769,8 +807,15 @@
       const pts = [];
       if (!rope.snapped) pts.push({ x: rope.ax, y: 0 });
       for (const s of rope.segs) pts.push(s.position);
-      const first = rope.letters[0];
-      pts.push(Vector.add(first.position, Vector.rotate({ x: 0, y: -rope.lh / 2 }, first.angle)));
+      // 실이 글자(구슬)를 위→아래로 꿰뚫고 다음 글자로 이어진다
+      const at = (b, dy) => Vector.add(b.position, Vector.rotate({ x: 0, y: dy }, b.angle));
+      rope.letters.forEach((b, i) => {
+        pts.push(at(b, -rope.lh / 2), at(b, rope.lh / 2));
+        if (i < rope.gaps.length) for (const s of rope.gaps[i]) pts.push(s.position);
+      });
+      const last = rope.letters[rope.letters.length - 1];
+      const knot = at(last, rope.lh / 2 + rope.tail);
+      pts.push(knot);
 
       ctx.strokeStyle = rope.progress >= 0.6 ? accentColor : ropeColor;
       ctx.beginPath();
@@ -783,6 +828,12 @@
       const end = pts[pts.length - 1];
       ctx.lineTo(end.x, end.y);
       ctx.stroke();
+
+      // 실 끝 매듭
+      ctx.fillStyle = ctx.strokeStyle;
+      ctx.beginPath();
+      ctx.arc(knot.x, knot.y, 2.2, 0, Math.PI * 2);
+      ctx.fill();
 
       if (!rope.snapped) {
         ctx.fillStyle = ropeColor;
@@ -824,9 +875,7 @@
     glassEl.style.setProperty("--hy", glassFx.hy.toFixed(1) + "px");
   }
 
-  // 구슬 주변 + 패턴 밝힘 — CSS 변수만 갱신, 패턴은 다시 그리지 않음
-  const glowEl = document.getElementById("plus-glow");
-  const glow = { x: null, y: null, r: 0 };
+  // 구슬 주변 + 패턴 — 중심에 가까울수록 밝고 크게 (밝기와 크기가 같은 smoothstep 감쇠)
   function drawGlow() {
     const p = ball.position;
     if (glow.x === null || reducedMotion) {
@@ -838,12 +887,36 @@
       glow.x += dx * GLOW.follow;
       glow.y += dy * GLOW.follow;
     }
-    if (glow.r !== ballR) {
-      glow.r = ballR;
-      glowEl.style.setProperty("--gr", Math.round(ballR * GLOW.range) + "px");
+    glow.r = ballR;
+
+    const R = ballR * GLOW.range;
+    const pad = (PLUS_SIZE / 2) * GLOW.maxScale + 2;
+    gctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (glow.box) gctx.clearRect(...glow.box);
+    else gctx.clearRect(0, 0, W, H);
+    glow.box = [glow.x - R - pad, glow.y - R - pad, (R + pad) * 2, (R + pad) * 2];
+
+    // dim 레이어(SVG 타일)와 같은 격자 (화면 중앙 기준)
+    const i0 = Math.ceil((glow.x - R - origin.x) / grid), i1 = Math.floor((glow.x + R - origin.x) / grid);
+    const j0 = Math.ceil((glow.y - R - origin.y) / grid), j1 = Math.floor((glow.y + R - origin.y) / grid);
+    gctx.strokeStyle = plusBright;
+    gctx.lineCap = "butt";
+    for (let j = j0; j <= j1; j++) {
+      for (let i = i0; i <= i1; i++) {
+        const cx = origin.x + i * grid, cy = origin.y + j * grid;
+        const t = Math.hypot(cx - glow.x, cy - glow.y) / R;
+        if (t >= 1) continue;
+        const w = 1 - t * t * (3 - 2 * t);
+        const h = (PLUS_SIZE / 2) * (1 + (GLOW.maxScale - 1) * w);
+        gctx.globalAlpha = w;
+        gctx.lineWidth = 1 + (GLOW.maxScale - 1) * w * 0.5;
+        gctx.beginPath();
+        gctx.moveTo(cx - h, cy); gctx.lineTo(cx + h, cy);
+        gctx.moveTo(cx, cy - h); gctx.lineTo(cx, cy + h);
+        gctx.stroke();
+      }
     }
-    glowEl.style.setProperty("--gx", glow.x.toFixed(1) + "px");
-    glowEl.style.setProperty("--gy", glow.y.toFixed(1) + "px");
+    gctx.globalAlpha = 1;
   }
 
   function renderOnce() {
@@ -851,6 +924,146 @@
     drawLetters();
     drawGlass();
     drawGlow();
+  }
+
+  // ------------------------------------------------------------------
+  // 십자수 자수 방명록 (1단계: 로컬)
+  // + 격자를 아이다 천으로 보고, 구슬을 바늘처럼 끌면 지나간 자리의 + 가 X 스티치로 바뀐다.
+  // 물리에는 관여하지 않는다 (충돌 바디 없음).
+  // ------------------------------------------------------------------
+  const STITCH = {
+    reach: 0.35,       // 스티치 반경 = 구슬 반지름 × reach
+    size: 0.7,         // X 크기 (셀 대비)
+    width: 1.5,        // 실 두께(px)
+    jitter: 0.6,       // 가닥 끝점 흔들림(±px)
+    fastSpeed: 40,     // 이 이동량(px/프레임)에서 채움 확률이 최소가 됨
+    minFill: 0.2,      // 최소 채움 확률
+    strokeMs: 80,      // 가닥 하나('/' 또는 '\')를 그리는 시간
+    opacity: 0.8,      // 자수 전체 불투명도 최대치 (뒤 텍스트가 묻히지 않게)
+    lifeMs: 10000,     // 놓인 뒤 이 시간이 지나면 사라짐
+    fadeMs: 4000,      // 사라지기 전 서서히 옅어지는 시간
+  };
+  const stitchCanvas = document.getElementById("stitches");
+  const sctx = stitchCanvas.getContext("2d");
+  const stitches = new Map();   // "col,row" → { col, row, createdAt }
+  let sewing = [];              // 그리는 중인 스티치 { s, start }
+  let needlePrev = null;        // 직전 프레임 구슬 위치 (드래그 중일 때만)
+  let threadColor = "";
+  let clothColor = "";
+
+  function stitchResize() {
+    stitchCanvas.width = canvas.width;
+    stitchCanvas.height = canvas.height;
+    const cs = getComputedStyle(document.documentElement);
+    threadColor = cs.getPropertyValue("--text").trim();
+    clothColor = cs.getPropertyValue("--bg").trim();
+    sctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    sewing = [];                // 그리던 것도 완성된 상태로 전체 다시 그림
+    for (const s of stitches.values()) drawStitch(s, 1);
+  }
+
+  // 셀마다 고정된 난수 → 다시 그려도(리사이즈 등) 같은 실 모양
+  function cellRandom(col, row) {
+    let h = (Math.imul(col, 374761393) + Math.imul(row, 668265263) + 0x9e3779b9) | 0;
+    return () => {
+      h = Math.imul(h ^ (h >>> 13), 1274126177);
+      h ^= h >>> 16;
+      return (h >>> 0) / 4294967296;
+    };
+  }
+
+  // 놓인 지 오래된 스티치일수록 옅게 (lifeMs - fadeMs 부터 서서히 0으로)
+  function stitchFade(s, nowMs) {
+    const left = STITCH.lifeMs - (nowMs - s.createdAt);
+    return Math.max(0, Math.min(1, left / STITCH.fadeMs));
+  }
+
+  // p: 0~1 진행도. 앞 절반에 '/', 뒤 절반에 '\' 를 그린다 (손바느질 순서)
+  function drawStitch(s, p) {
+    const cx = origin.x + s.col * grid, cy = origin.y + s.row * grid;
+    if (cx < -grid || cy < -grid || cx > W + grid || cy > H + grid) return;
+    sctx.clearRect(cx - grid / 2, cy - grid / 2, grid, grid);
+    const fade = STITCH.opacity * stitchFade(s, Date.now());
+    if (fade <= 0) return;
+    const rnd = cellRandom(s.col, s.row);
+    const j = () => (rnd() * 2 - 1) * STITCH.jitter;
+    const h = (grid * STITCH.size) / 2;
+    const legs = [
+      [cx - h + j(), cy + h + j(), cx + h + j(), cy - h + j(), 0.85 + rnd() * 0.15],  // '/'
+      [cx - h + j(), cy - h + j(), cx + h + j(), cy + h + j(), 0.85 + rnd() * 0.15],  // '\'
+    ];
+    sctx.globalAlpha = fade;
+    sctx.fillStyle = clothColor;              // 셀 아래 + 가리기
+    sctx.fillRect(cx - 4.5, cy - 4.5, 9, 9);
+    sctx.lineCap = "round";
+    sctx.strokeStyle = threadColor;
+    for (let k = 0; k < 2; k++) {
+      const t = Math.min(1, Math.max(0, p * 2 - k));
+      if (t <= 0) break;
+      const [x1, y1, x2, y2, a] = legs[k];
+      const x = x1 + (x2 - x1) * t, y = y1 + (y2 - y1) * t;
+      // 실 가장자리는 옅게, 가운데는 밝게
+      sctx.globalAlpha = fade * a * 0.55;
+      sctx.lineWidth = STITCH.width;
+      sctx.beginPath(); sctx.moveTo(x1, y1); sctx.lineTo(x, y); sctx.stroke();
+      sctx.globalAlpha = fade * a;
+      sctx.lineWidth = STITCH.width * 0.5;
+      sctx.beginPath(); sctx.moveTo(x1, y1); sctx.lineTo(x, y); sctx.stroke();
+    }
+    sctx.globalAlpha = 1;
+  }
+
+  // 홀드-드래그 중일 때만 구슬 경로 위 셀에 스티치를 놓는다
+  function stitchTrack(now) {
+    if (!grab || grab.body !== ball) {
+      needlePrev = null;
+      return;
+    }
+    const to = { x: ball.position.x, y: ball.position.y };
+    const from = needlePrev || to;
+    needlePrev = to;
+    const dist = Math.hypot(to.x - from.x, to.y - from.y);
+    const fill = Math.max(STITCH.minFill, 1 - dist / STITCH.fastSpeed);
+    const reach = ballR * STITCH.reach;
+    const steps = Math.max(1, Math.ceil(dist / (grid / 2)));   // 빠르게 끌어도 경로 중간 셀까지 판정
+    const rolled = new Set();                                   // 한 프레임에 셀당 한 번만 확률 판정
+    for (let k = 0; k <= steps; k++) {
+      const x = from.x + ((to.x - from.x) * k) / steps;
+      const y = from.y + ((to.y - from.y) * k) / steps;
+      const c0 = Math.ceil((x - reach - origin.x) / grid), c1 = Math.floor((x + reach - origin.x) / grid);
+      const r0 = Math.ceil((y - reach - origin.y) / grid), r1 = Math.floor((y + reach - origin.y) / grid);
+      for (let row = r0; row <= r1; row++) {
+        for (let col = c0; col <= c1; col++) {
+          const key = col + "," + row;
+          if (stitches.has(key) || rolled.has(key)) continue;
+          if (Math.hypot(origin.x + col * grid - x, origin.y + row * grid - y) > reach) continue;
+          rolled.add(key);
+          if (Math.random() > fill) continue;
+          const s = { col, row, createdAt: Date.now() };
+          stitches.set(key, s);
+          if (reducedMotion) drawStitch(s, 1);
+          else sewing.push({ s, start: now });
+        }
+      }
+    }
+  }
+
+  function stitchDraw(now) {
+    if (sewing.length) {
+      sewing = sewing.filter(({ s, start }) => {
+        const p = Math.min(1, (now - start) / (STITCH.strokeMs * 2));
+        drawStitch(s, p);
+        return p < 1;
+      });
+    }
+    // 옅어지는 중인 스티치만 다시 그리고, 수명이 다하면 지운다 (그 셀엔 다시 수놓을 수 있음)
+    const nowMs = Date.now();
+    for (const [key, s] of stitches) {
+      const age = nowMs - s.createdAt;
+      if (age < STITCH.lifeMs - STITCH.fadeMs) continue;
+      drawStitch(s, 1);
+      if (age >= STITCH.lifeMs) stitches.delete(key);
+    }
   }
 
   // ------------------------------------------------------------------
@@ -882,6 +1095,8 @@
     if (ball.plugin.ghost) checkGhost(false);
     for (const rope of ropes) updatePull(rope);
     renderOnce();
+    stitchTrack(now);
+    stitchDraw(now);
     rafId = requestAnimationFrame(frame);
   }
 
@@ -911,6 +1126,7 @@
       H = window.innerHeight;
       if (grab) { Composite.remove(world, grab.constraint); grab = null; }
       sizeCanvas();
+      stitchResize();
       buildWalls();
       buildRopes();
       resizeBall();
@@ -930,6 +1146,7 @@
     W = window.innerWidth;
     H = window.innerHeight;
     sizeCanvas();
+    stitchResize();
     buildWalls();
     buildRopes();
     createBall();
