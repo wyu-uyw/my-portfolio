@@ -3,14 +3,10 @@
 // 각 페이지는 <body data-page="work" data-title="Work"> 처럼 현재 메뉴와 제목을 표시한다.
 // 하위 페이지는 인터랙션을 최소화한다: 이미지 페이드인, 호버 확대, 라이트박스만.
 // ==================================================================
+// 이름·이메일·SNS·상태·CV 등은 관리 페이지의 "사이트 설정"(site_settings)에서 온다 (assets/data.js를 먼저 불러올 것)
+// 첫 화면은 마지막으로 받은 설정(SETTINGS)으로 바로 그리고, 최신 설정을 받으면(siteReady) 다시 채운다.
+const SETTINGS = typeof DB !== "undefined" ? DB.cachedSettings() : {};
 const SITE = {
-  name: "KIM HANEUL",                       // 임시 가명 — 실제 이름 확정 후 교체
-  email: "haneul.kim@example.com",           // 임시
-  sns: [
-    { label: "Instagram", href: "https://instagram.com/" },   // 임시
-  ],
-  status: "협업 문의 가능",
-  cvUrl: null,                               // CV PDF 경로 (예: "assets/cv.pdf"). null이면 '준비 중'
   menus: [
     { key: "work",    label: "Work",    href: "work.html" },
     { key: "journal", label: "Journal", href: "journal.html" },
@@ -18,6 +14,15 @@ const SITE = {
     { key: "contact", label: "Contact", href: "contact.html" },
   ],
 };
+function applySettings(s) {
+  Object.assign(SETTINGS, s);
+  SITE.name = s.name || "";
+  SITE.email = s.email || "";
+  SITE.sns = s.sns || [];
+  SITE.status = s.status || "";
+  SITE.cvUrl = s.cv_pdf || null;              // null이면 About의 CV 버튼이 '준비 중'
+}
+applySettings(SETTINGS);
 
 // 문자열을 HTML에 넣을 때 항상 이스케이프
 function esc(s) {
@@ -35,8 +40,10 @@ function paragraphs(text) {
 }
 // <title>을 "페이지명 — 이름" 형식으로
 // description을 주면 검색 결과·공유 미리보기에 쓰이는 설명도 바꾼다 (Journal·작품 글 노출용)
+let titleName = "";
 function setTitle(pageName, description) {
-  document.title = `${pageName} — ${SITE.name}`;
+  titleName = pageName;
+  document.title = SITE.name ? `${pageName} — ${SITE.name}` : pageName;
   if (description) document.querySelector('meta[name="description"]')?.setAttribute("content", description.slice(0, 160));
 }
 
@@ -67,7 +74,7 @@ function renderChrome() {
   const header = document.createElement("header");
   header.className = "site-header";
   header.innerHTML = `
-    <a class="logo" href="index.html" data-home>${esc(SITE.name)}</a>
+    <a class="logo" href="index.html" data-home></a>
     <nav class="site-nav" aria-label="메뉴">
       ${SITE.menus.map((m) => `<a href="${m.href}"${m.key === page ? ' aria-current="page"' : ""}>${m.label}</a>`).join("")}
     </nav>`;
@@ -76,21 +83,33 @@ function renderChrome() {
   const footer = document.createElement("footer");
   footer.className = "site-footer";
   footer.innerHTML = `
-    <div class="links">
-      <a href="mailto:${esc(SITE.email)}">${esc(SITE.email)}</a>
-      ${SITE.sns.map((s) => `<a href="${esc(s.href)}" target="_blank" rel="noopener">${esc(s.label)}</a>`).join("")}
-    </div>
+    <div class="links" data-contact-links></div>
     <div class="end">
       <button class="theme-btn" type="button" data-theme-toggle></button>
-      <span>© ${esc(SITE.name)} ${new Date().getFullYear()}</span>
+      <span data-copyright></span>
     </div>`;
   document.body.append(footer);
+  fillChrome();
   setupThemeToggle(footer.querySelector("[data-theme-toggle]"));
 
   // 이름(로고)으로 메인에 돌아가면 메인의 줄이 다시 매달리는 연출
   header.querySelector("[data-home]").addEventListener("click", () => {
     try { sessionStorage.setItem("rehang", "1"); } catch (_) {}
   });
+}
+
+// 로고·푸터의 이름·이메일·SNS를 설정값으로 채운다 (설정을 새로 받으면 다시 부름)
+function fillChrome() {
+  const logo = document.querySelector(".site-header [data-home]");
+  if (logo) logo.textContent = SITE.name;
+  const links = document.querySelector("[data-contact-links]");
+  if (links) {
+    links.innerHTML = (SITE.email ? `<a href="mailto:${esc(SITE.email)}">${esc(SITE.email)}</a>` : "") +
+      SITE.sns.map((s) => `<a href="${esc(s.href)}" target="_blank" rel="noopener">${esc(s.label)}</a>`).join("");
+  }
+  const copy = document.querySelector("[data-copyright]");
+  if (copy) copy.textContent = `© ${SITE.name} ${new Date().getFullYear()}`;
+  if (titleName) setTitle(titleName);
 }
 
 // 배색 전환 (파란 배경 ↔ 흰 배경). 메인과 같은 localStorage 키를 쓴다.
@@ -190,6 +209,12 @@ const lightbox = (() => {
 })();
 
 renderChrome();
+// 최신 설정 받기 — 페이지 스크립트는 설정이 필요한 부분을 siteReady.then(...) 안에서 그린다
+const siteReady = (typeof DB !== "undefined" ? DB.settings() : Promise.resolve({})).then((s) => {
+  applySettings(s);
+  fillChrome();
+  return s;
+});
 document.body.append(lightbox.el);
 alignGrid();
 addEventListener("resize", alignGrid);

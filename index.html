@@ -318,6 +318,17 @@
   .sm-cols a:hover { color: var(--accent); }
   .sm-cols a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
   .sm-hint { margin: 40px 0 0; font-size: 12px; letter-spacing: 0.08em; color: var(--text-soft); }
+  /* 관리 페이지 숨은 입구 — 사이트맵 면에서만 보이는 작은 글자 */
+  .sm-admin {
+    display: inline-block;
+    margin-top: 28px;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    color: var(--text-faint, var(--text-soft));
+    opacity: 0.45;
+    text-decoration: none;
+  }
+  .sm-admin:hover, .sm-admin:focus-visible { opacity: 1; color: var(--accent); }
   @media (max-width: 820px) {
     .sm-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 24px; }
   }
@@ -426,9 +437,10 @@
   </div>
   <footer class="corner bl">
     <div class="profile">
-      <p class="p-role">INTERACTION DESIGNER · FRONT-END</p>
-      <p class="p-name">KIM HANEUL</p>
-      <p class="p-meta"><b>haneul.kim@example.com</b><br>Seoul, KR — 새로운 프로젝트 문의 환영해요</p>
+      <!-- 내용은 사이트 설정(관리 페이지)에서 채운다 -->
+      <p class="p-role" id="p-role"></p>
+      <p class="p-name" id="p-name"></p>
+      <p class="p-meta"><b id="p-email"></b><br><span id="p-intro"></span></p>
     </div>
     <p id="hint" aria-hidden="true" style="margin:0">줄을 끝까지 당겼다 놓으면 열려요 · 유리구슬은 잡고 던질 수 있어요</p>
   </footer>
@@ -476,11 +488,12 @@
         </section>
       </div>
       <p class="sm-hint">레버를 다시 세우면 메인으로 돌아가요</p>
+      <a class="sm-admin" href="admin.html" rel="nofollow">admin</a>
     </div>
   </nav>
   </div>
 
-  <div class="corner tl" aria-hidden="true">PORTFOLIO</div>
+  <div class="corner tl" id="site-title" aria-hidden="true">PORTFOLIO</div>
   <div class="top-actions">
     <button class="draft-btn" id="theme-btn" type="button" aria-pressed="false">White</button>
     <a class="draft-btn" href="plan-draft.html">plan-draft</a>
@@ -515,6 +528,7 @@
   </svg>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+  <script src="assets/data.js"></script>
   <script>
   // ===================================================================
   // 설정 — 메뉴는 이 배열만 수정하면 줄/글자가 자동 생성된다.
@@ -547,6 +561,20 @@
   };
 
   const { Engine, Bodies, Body, Composite, Constraint, Query, Vector } = Matter;
+
+  // 사이트명·작가 소개는 관리 페이지의 "사이트 설정"에서 온다 (assets/data.js)
+  const applyMainSettings = (s) => {
+    const set = (id, v) => { if (v) document.getElementById(id).textContent = v; };
+    set("site-title", s.site_title);
+    set("p-role", s.main_role);
+    set("p-name", s.name);
+    set("p-email", s.email);
+    set("p-intro", s.main_intro);
+    if (s.name) document.title = s.name;
+    if (s.description) document.querySelector('meta[name="description"]').setAttribute("content", s.description);
+  };
+  applyMainSettings(DB.cachedSettings());
+  DB.settings().then(applyMainSettings);
 
   const CAT = { WALL: 0x1, ROPE: 0x2, BALL: 0x4 };
   const FONT_SCALE = 0.95;   // 보이는 글자 크기 배율 (물리 바디 크기는 그대로)

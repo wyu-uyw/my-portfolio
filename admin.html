@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>관리</title>
+<meta name="description" content="포트폴리오 내용 관리">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
+<link href="assets/site.css" rel="stylesheet">
+<link href="assets/admin.css" rel="stylesheet">
+<script>try { if (localStorage.getItem("theme") === "inverse") document.documentElement.dataset.theme = "inverse"; } catch (_) {}</script>
+</head>
+<body class="admin">
+  <div class="site-bg" aria-hidden="true"></div>
+
+  <header class="ad-top">
+    <a class="ad-brand" href="index.html">← 사이트로</a>
+    <strong class="ad-title">관리</strong>
+    <div class="ad-tools" id="tools" hidden>
+      <button class="ad-btn small" type="button" id="export">JSON 내보내기</button>
+      <button class="ad-btn small ghost" type="button" id="import" hidden>JSON 가져오기</button>
+      <button class="ad-btn small ghost" type="button" id="reset" hidden>예시 데이터로 되돌리기</button>
+      <button class="ad-btn small ghost" type="button" id="logout" hidden>로그아웃</button>
+    </div>
+  </header>
+
+  <!-- 입장 전 로그인 (Supabase Auth 이메일 + 비밀번호) -->
+  <section class="ad-gate" id="gate" aria-labelledby="gate-title">
+    <form class="ad-gate-box" id="login" novalidate>
+      <h1 id="gate-title">관리자 로그인</h1>
+      <p class="ad-gate-note" id="gate-note"></p>
+      <div class="f"><label for="login-email">이메일</label><input id="login-email" type="email" autocomplete="username" required></div>
+      <div class="f"><label for="login-pw">비밀번호</label><input id="login-pw" type="password" autocomplete="current-password" required></div>
+      <button class="ad-btn" type="submit" id="login-btn">들어가기</button>
+      <p class="ad-gate-msg" id="login-msg" role="alert"></p>
+      <button class="ad-btn ghost" type="button" id="local-enter" hidden>로컬 미리보기로 들어가기</button>
+    </form>
+  </section>
+
+  <p class="ad-banner" id="banner" hidden>
+    <b>로컬 미리보기 모드</b> — Supabase 연결 전이에요. 여기서 고친 내용은 <b>이 브라우저에만</b> 저장되고,
+    같은 브라우저로 사이트를 열면 바로 반영돼 보여요. 다른 사람에게 보이게 하는 공개는 Supabase 연결 후에 돼요.
+    그 전에 쓴 내용은 <b>JSON 내보내기</b>로 백업해 두면 연결한 뒤 <b>JSON 가져오기</b>로 옮길 수 있어요.
+  </p>
+
+  <div class="ad-layout" id="app" hidden>
+    <nav class="ad-nav" id="nav" aria-label="관리 메뉴"></nav>
+    <main class="ad-main" id="main" tabindex="-1"></main>
+  </div>
+
+  <div class="ad-toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="assets/data.js"></script>
+  <script src="assets/admin.js"></script>
+</body>
+</html>

@@ -34,7 +34,7 @@
 <body data-page="journal" data-title="Journal">
   <main>
     <h1 class="page-title">Journal</h1>
-    <p class="page-lead">만드는 과정, 리서치, 전시 이야기와 짧은 메모.</p>
+    <p class="page-lead" id="lead"></p>
 
     <div class="filters">
       <div class="chip-row" role="group" aria-label="카테고리">
@@ -50,9 +50,12 @@
     <ul id="list" class="posts"></ul>
   </main>
 
-  <script src="assets/site.js"></script>
   <script src="assets/data.js"></script>
+  <script src="assets/site.js"></script>
   <script>
+  const renderLead = () => (document.getElementById("lead").textContent = SETTINGS.journal_lead || "");
+  renderLead();
+  siteReady.then(renderLead);
   let cat = param("category") || "all";
   let posts = [];
 

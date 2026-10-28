@@ -67,24 +67,32 @@
     </section>
   </main>
 
-  <script src="assets/site.js"></script>
   <script src="assets/data.js"></script>
+  <script src="assets/site.js"></script>
   <script>
-  document.getElementById("photo").innerHTML =
-    zoomable({ src: ABOUT.photo, alt: SITE.name, ratio: "3 / 4", label: "PHOTO", caption: SITE.name, group: "photo" });
-  document.getElementById("name").textContent = SITE.name;
-  document.getElementById("one-liner").textContent = ABOUT.oneLiner;
-  document.getElementById("bio-text").textContent = ABOUT.bio;
-  document.getElementById("statement-text").innerHTML = ABOUT.statement.map((p) => `<p>${esc(p)}</p>`).join("");
+  // Bio · Statement · CV PDF는 사이트 설정에서 — 첫 화면은 마지막 설정으로, 최신 설정을 받으면 다시
+  function renderProfile() {
+    document.getElementById("photo").innerHTML =
+      zoomable({ src: SETTINGS.about_photo, alt: SITE.name, ratio: "3 / 4", label: "PHOTO", caption: SITE.name, group: "photo" });
+    document.getElementById("name").textContent = SITE.name;
+    document.getElementById("one-liner").textContent = SETTINGS.about_one_liner || "";
+    document.getElementById("bio-text").textContent = SETTINGS.about_bio || "";
+    document.getElementById("statement-text").innerHTML = paragraphs(SETTINGS.about_statement).map((p) => `<p>${esc(p)}</p>`).join("");
 
-  const pdf = document.getElementById("cv-pdf");
-  if (SITE.cvUrl) {
-    pdf.href = SITE.cvUrl;
-    pdf.setAttribute("download", "");
-  } else {
-    pdf.textContent = "CV PDF 준비 중";
-    pdf.setAttribute("aria-disabled", "true");
+    const pdf = document.getElementById("cv-pdf");
+    if (SITE.cvUrl) {
+      pdf.href = SITE.cvUrl;
+      pdf.setAttribute("download", "");
+      pdf.removeAttribute("aria-disabled");
+      pdf.textContent = "CV PDF 다운로드";
+    } else {
+      pdf.removeAttribute("href");
+      pdf.textContent = "CV PDF 준비 중";
+      pdf.setAttribute("aria-disabled", "true");
+    }
   }
+  renderProfile();
+  siteReady.then(renderProfile);
 
   // CV: 섹션별로 묶고, 각 섹션 안은 최신순 (DB.cv가 정렬해서 줌). 웹 노출 CV에는 전화번호를 넣지 않는다.
   function cvRow(item) {
