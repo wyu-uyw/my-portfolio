@@ -5,34 +5,31 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Portfolio</title>
 <meta name="description" content="Portfolio">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=Noto+Sans+KR:wght@400;600&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
 <style>
   :root {
-    --bg: #f3efe8;
-    --ink: #151515;
-    --ink-soft: rgba(21, 21, 21, 0.55);
-    --accent: #ff4d2e;
-    --blob-1: #ffb08a;
-    --blob-2: #b9a4ff;
-    --blob-3: #7fd8c3;
-    --blob-4: #8fc6ff;
-    --rope: rgba(21, 21, 21, 0.72);
-    --overlay-bg: rgba(243, 239, 232, 0.72);
+    --bg: #0356fc;
+    --bg-dark: #0238a8;
+    --text: #ffffff;
+    --text-soft: rgba(255, 255, 255, 0.72);
+    --rope: rgba(255, 255, 255, 0.5);
+    --plus-dim: rgba(255, 255, 255, 0.12);    /* 평소 + 패턴 */
+    --plus-bright: rgba(255, 255, 255, 0.95); /* 구슬 근처 + 패턴 */
+    --glass-tint: rgba(255, 255, 255, 0.12);
+    --glass-border: rgba(255, 255, 255, 0.6);
+    --accent: #fcad03;                        /* 당김 임계값 피드백 */
+    --overlay-bg: rgba(3, 86, 252, 0.78);
+    --font: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+
+    /* + 패턴 타일 (선 2개, 픽셀 중앙 정렬로 선명하게) */
+    --grid: 24px;
+    --plus-tile: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Cpath d='M12.5 9v7M9 12.5h7' stroke='%23000' stroke-width='1'/%3E%3C/svg%3E");
   }
-  @media (prefers-color-scheme: dark) {
+  @media (max-width: 640px) {
     :root {
-      --bg: #0e0f14;
-      --ink: #f2eee7;
-      --ink-soft: rgba(242, 238, 231, 0.55);
-      --accent: #ff7a59;
-      --blob-1: #c2412a;
-      --blob-2: #5b3fd1;
-      --blob-3: #138a73;
-      --blob-4: #1f5fb8;
-      --rope: rgba(242, 238, 231, 0.7);
-      --overlay-bg: rgba(14, 15, 20, 0.72);
+      --grid: 20px;
+      --plus-tile: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Cpath d='M10.5 7v7M7 10.5h7' stroke='%23000' stroke-width='1'/%3E%3C/svg%3E");
     }
   }
 
@@ -43,36 +40,49 @@
     height: 100%;
     overflow: hidden;
     background: var(--bg);
-    color: var(--ink);
-    font-family: "Noto Sans KR", system-ui, sans-serif;
+    color: var(--text);
+    font-family: var(--font);
+    -webkit-font-smoothing: antialiased;
     overscroll-behavior: none;
   }
 
-  /* ---------- 배경 ---------- */
+  /* ---------- 배경: 단색 + 약한 비네팅 + + 패턴 ---------- */
   #bg {
     position: fixed;
     inset: 0;
     z-index: 0;
     overflow: hidden;
     pointer-events: none;
+    background:
+      radial-gradient(ellipse 120% 100% at 50% 45%, transparent 55%, color-mix(in srgb, var(--bg-dark) 70%, transparent) 100%),
+      var(--bg);
   }
-  .blob {
+  .plus,
+  .plus-glow {
     position: absolute;
-    width: 70vmax;
-    height: 70vmax;
-    border-radius: 50%;
-    opacity: 0.75;
-    will-change: transform;
-    animation: drift 26s ease-in-out infinite alternate;
+    inset: 0;
+    pointer-events: none;
   }
-  .blob:nth-child(1) { background: radial-gradient(circle, var(--blob-1) 0%, transparent 62%); left: -25vmax; top: -20vmax; }
-  .blob:nth-child(2) { background: radial-gradient(circle, var(--blob-2) 0%, transparent 62%); right: -30vmax; top: -10vmax; animation-duration: 31s; animation-delay: -8s; }
-  .blob:nth-child(3) { background: radial-gradient(circle, var(--blob-3) 0%, transparent 62%); left: -10vmax; bottom: -40vmax; animation-duration: 23s; animation-delay: -4s; }
-  .blob:nth-child(4) { background: radial-gradient(circle, var(--blob-4) 0%, transparent 62%); right: -20vmax; bottom: -35vmax; animation-duration: 35s; animation-delay: -15s; }
-  @keyframes drift {
-    0%   { transform: translate(0, 0) scale(1); }
-    50%  { transform: translate(8vmax, 6vmax) scale(1.08); }
-    100% { transform: translate(-6vmax, 10vmax) scale(0.95); }
+  /* 패턴 모양은 마스크로, 색은 배경색으로 → 색을 CSS 변수로 관리 */
+  .plus {
+    -webkit-mask-image: var(--plus-tile);
+    mask-image: var(--plus-tile);
+    -webkit-mask-size: var(--grid) var(--grid);
+    mask-size: var(--grid) var(--grid);
+    -webkit-mask-position: 0 0;
+    mask-position: 0 0;
+  }
+  .plus.dim { background: var(--plus-dim); }
+  .plus.bright { background: var(--plus-bright); }
+  /* 구슬 주변만 보이게 (smoothstep 감쇠를 그라데이션 정지점으로 근사) */
+  .plus-glow {
+    --gx: -999px;
+    --gy: -999px;
+    --gr: 175px;
+    -webkit-mask-image: radial-gradient(circle var(--gr) at var(--gx) var(--gy),
+      #000 0%, rgba(0,0,0,.9) 20%, rgba(0,0,0,.65) 40%, rgba(0,0,0,.35) 60%, rgba(0,0,0,.1) 80%, transparent 100%);
+    mask-image: radial-gradient(circle var(--gr) at var(--gx) var(--gy),
+      #000 0%, rgba(0,0,0,.9) 20%, rgba(0,0,0,.65) 40%, rgba(0,0,0,.35) 60%, rgba(0,0,0,.1) 80%, transparent 100%);
   }
 
   .corner {
@@ -80,26 +90,26 @@
     z-index: 1;
     font-size: 12px;
     letter-spacing: 0.08em;
-    color: var(--ink-soft);
+    color: var(--text-soft);
     pointer-events: none;
     user-select: none;
   }
-  .corner.tl { left: 20px; top: 18px; font-family: "Anton", sans-serif; font-size: 15px; letter-spacing: 0.12em; color: var(--ink); }
+  .corner.tl { left: 20px; top: 18px; font-size: 15px; font-weight: 600; letter-spacing: 0.16em; color: var(--text); }
   .corner.bl { left: 20px; right: 20px; bottom: 18px; line-height: 1.6; }
 
   /* 배경 프로필 (임시 정보, 구슬 굴절 확인용) */
-  .profile { margin-bottom: 18px; color: var(--ink); letter-spacing: 0; }
+  .profile { margin-bottom: 18px; color: var(--text); letter-spacing: 0; }
   .profile p { margin: 0; }
-  .p-role { font-size: 13px; font-weight: 600; letter-spacing: 0.14em; color: var(--accent); }
+  .p-role { font-size: 13px; font-weight: 500; letter-spacing: 0.16em; color: var(--text-soft); }
   .p-name {
-    font-family: "Anton", sans-serif;
+    font-weight: 300;
     font-size: clamp(44px, 8vw, 120px);
     line-height: 1;
-    letter-spacing: 0.01em;
+    letter-spacing: 0.02em;
     margin: 6px 0 10px !important;
   }
-  .p-meta { font-size: 15px; line-height: 1.7; color: var(--ink-soft); }
-  .p-meta b { font-weight: 600; color: var(--ink); }
+  .p-meta { font-size: 15px; line-height: 1.7; color: var(--text-soft); }
+  .p-meta b { font-weight: 500; color: var(--text); }
   @media (max-height: 560px) {
     .profile { display: none; }
   }
@@ -111,15 +121,16 @@
     right: 16px;
     z-index: 5;
     padding: 7px 14px;
-    border: 1px solid var(--ink);
+    border: 1px solid var(--glass-border);
     border-radius: 999px;
-    background: color-mix(in oklab, var(--bg) 60%, transparent);
-    color: var(--ink);
+    background: color-mix(in srgb, var(--bg) 60%, transparent);
+    color: var(--text);
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 500;
+    letter-spacing: 0.04em;
     text-decoration: none;
   }
-  .draft-btn:hover { background: var(--ink); color: var(--bg); }
+  .draft-btn:hover { background: var(--text); color: var(--bg); }
   .draft-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 
   /* ---------- 물리 스테이지 ---------- */
@@ -146,9 +157,10 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-family: "Anton", "Arial Narrow", sans-serif;
+    font-family: var(--font);
+    font-weight: 300;
     line-height: 1;
-    color: color-mix(in oklab, var(--ink), var(--accent) calc(var(--p, 0) * 100%));
+    color: color-mix(in srgb, var(--text), var(--accent) calc(var(--p, 0) * 100%));
     opacity: calc(1 - var(--p, 0) * 0.2);
     will-change: transform;
   }
@@ -164,19 +176,20 @@
     border-radius: 50%;
     pointer-events: none;
     will-change: transform;
-    background: rgba(255, 255, 255, 0.03);
-    -webkit-backdrop-filter: blur(3px) saturate(1.8) brightness(1.02);
-    backdrop-filter: blur(3px) saturate(1.8) brightness(1.02);
+    background: var(--glass-tint);
+    -webkit-backdrop-filter: blur(6px) saturate(1.4) brightness(1.08);
+    backdrop-filter: blur(6px) saturate(1.4) brightness(1.08);
     box-shadow:
-      inset 0 0 0 1px rgba(255, 255, 255, 0.5),
+      inset 0 0 0 1px var(--glass-border),
       inset 0 10px 18px -10px rgba(255, 255, 255, 0.95),
-      inset 0 -14px 24px -14px rgba(255, 255, 255, 0.55),
-      inset 0 0 22px rgba(0, 0, 0, 0.06),
-      0 24px 44px -18px rgba(10, 10, 30, 0.35);
+      inset 0 -14px 24px -14px rgba(255, 255, 255, 0.45),
+      inset 0 0 26px rgba(255, 255, 255, 0.08),
+      0 24px 44px -18px color-mix(in srgb, var(--bg-dark) 45%, transparent);
     transition: box-shadow 0.2s;
   }
+  /* 굴절 지원 시: 블러를 약하게 두어 + 패턴이 흐려지지 않고 휘어 보이게 */
   #glass.lens {
-    backdrop-filter: url(#lens-filter) blur(1.2px) saturate(1.8) brightness(1.02);
+    backdrop-filter: url(#lens-filter) blur(1.5px) saturate(1.4) brightness(1.08);
   }
   /* 스페큘러 하이라이트 (속도 반대 방향으로 밀림) */
   #glass::before {
@@ -193,11 +206,11 @@
   }
   #glass.held {
     box-shadow:
-      inset 0 0 0 1px rgba(255, 255, 255, 0.65),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.8),
       inset 0 10px 18px -10px rgba(255, 255, 255, 1),
-      inset 0 -14px 24px -14px rgba(255, 255, 255, 0.6),
-      inset 0 0 30px rgba(255, 255, 255, 0.12),
-      0 30px 54px -18px rgba(10, 10, 30, 0.4);
+      inset 0 -14px 24px -14px rgba(255, 255, 255, 0.55),
+      inset 0 0 30px rgba(255, 255, 255, 0.14),
+      0 30px 54px -18px color-mix(in srgb, var(--bg-dark) 55%, transparent);
   }
 
   /* ---------- 준비 중 오버레이 ---------- */
@@ -221,29 +234,29 @@
     transition: opacity 0.45s ease, visibility 0s;
   }
   .ov-inner { text-align: center; max-width: 520px; }
-  .ov-kicker { margin: 0 0 8px; font-size: 13px; letter-spacing: 0.2em; color: var(--accent); font-weight: 600; }
+  .ov-kicker { margin: 0 0 8px; font-size: 13px; letter-spacing: 0.24em; color: var(--text-soft); font-weight: 500; }
   #ov-title {
     margin: 0;
-    font-family: "Anton", sans-serif;
-    font-weight: 400;
+    font-weight: 300;
     font-size: clamp(56px, 16vw, 160px);
     line-height: 0.95;
-    letter-spacing: 0.02em;
+    letter-spacing: 0.04em;
     overflow-wrap: anywhere;
   }
-  .ov-desc { margin: 16px 0 28px; color: var(--ink-soft); font-size: 15px; }
+  .ov-desc { margin: 16px 0 28px; color: var(--text-soft); font-size: 15px; }
   #ov-close {
     font: inherit;
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 500;
+    letter-spacing: 0.04em;
     padding: 12px 22px;
     border-radius: 999px;
     border: 1px solid currentColor;
     background: transparent;
-    color: var(--ink);
+    color: var(--text);
     cursor: pointer;
   }
-  #ov-close:hover { background: var(--ink); color: var(--bg); }
+  #ov-close:hover { background: var(--text); color: var(--bg); }
   #ov-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 
   /* ---------- 접근성 ---------- */
@@ -263,14 +276,13 @@
     clip: auto;
     z-index: 20;
     padding: 10px 16px;
-    background: var(--ink);
+    background: var(--text);
     color: var(--bg);
     border-radius: 8px;
     font-weight: 600;
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .blob { animation: none; }
     #overlay, #overlay.open { transition: none; }
   }
 </style>
@@ -282,7 +294,8 @@
   </nav>
 
   <div id="bg" aria-hidden="true">
-    <div class="blob"></div><div class="blob"></div><div class="blob"></div><div class="blob"></div>
+    <div class="plus dim"></div>
+    <div class="plus-glow" id="plus-glow"><div class="plus bright"></div></div>
   </div>
   <div class="corner tl" aria-hidden="true">PORTFOLIO</div>
   <a class="draft-btn" href="plan-draft.html">plan-draft</a>
@@ -351,6 +364,9 @@
   const { Engine, Bodies, Body, Composite, Constraint, Query, Vector } = Matter;
 
   const CAT = { WALL: 0x1, ROPE: 0x2, BALL: 0x4 };
+  const FONT_SCALE = 0.95;   // 보이는 글자 크기 배율 (물리 바디 크기는 그대로)
+  const LETTER_GAP = 0.16;   // 세로 글자 사이 간격 (폰트 크기 대비)
+  const GLOW = { range: 2.5, follow: 0.15 };   // + 패턴 밝기 범위(구슬 반지름 배수), 따라오는 lerp
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const supportsLens = !!(navigator.userAgentData &&
     navigator.userAgentData.brands.some((b) => /Chromium/i.test(b.brand)));
@@ -389,9 +405,9 @@
     const segLen = CONFIG.rope.segmentLength * scale;
     const longest = Math.max(...CONFIG.menus.map((m) => m.label.length));
     // 가장 긴 메뉴가 화면 높이의 ~85% 안에 들어오도록 폰트 크기 제한
-    const byHeight = (H * 0.85 - CONFIG.rope.segments * segLen) / (longest * 0.95);
+    const byHeight = (H * 0.85 - CONFIG.rope.segments * segLen) / (longest * (0.9 + LETTER_GAP));
     const font = Math.max(22, Math.min(64, H * 0.06, spacing * 0.75 / 0.72, byHeight));
-    return { n, spacing, segLen, font, lw: font * 0.72, lh: font * 0.9, gap: Math.max(1, font * 0.04) };
+    return { n, spacing, segLen, font, lw: font * 0.72, lh: font * 0.9, gap: Math.max(1, font * LETTER_GAP) };
   }
 
   function glassRadius() {
@@ -446,7 +462,7 @@
       el.textContent = ch;
       el.style.width = m.lw + "px";
       el.style.height = m.lh + "px";
-      el.style.fontSize = m.font + "px";
+      el.style.fontSize = m.font * FONT_SCALE + "px";
       wrap.appendChild(el);
       els.push(el);
       y += m.lh + m.gap;
@@ -808,10 +824,33 @@
     glassEl.style.setProperty("--hy", glassFx.hy.toFixed(1) + "px");
   }
 
+  // 구슬 주변 + 패턴 밝힘 — CSS 변수만 갱신, 패턴은 다시 그리지 않음
+  const glowEl = document.getElementById("plus-glow");
+  const glow = { x: null, y: null, r: 0 };
+  function drawGlow() {
+    const p = ball.position;
+    if (glow.x === null || reducedMotion) {
+      glow.x = p.x;
+      glow.y = p.y;
+    } else {
+      const dx = p.x - glow.x, dy = p.y - glow.y;
+      if (Math.abs(dx) < 0.1 && Math.abs(dy) < 0.1 && glow.r === ballR) return;
+      glow.x += dx * GLOW.follow;
+      glow.y += dy * GLOW.follow;
+    }
+    if (glow.r !== ballR) {
+      glow.r = ballR;
+      glowEl.style.setProperty("--gr", Math.round(ballR * GLOW.range) + "px");
+    }
+    glowEl.style.setProperty("--gx", glow.x.toFixed(1) + "px");
+    glowEl.style.setProperty("--gy", glow.y.toFixed(1) + "px");
+  }
+
   function renderOnce() {
     drawRopes();
     drawLetters();
     drawGlass();
+    drawGlow();
   }
 
   // ------------------------------------------------------------------
@@ -847,7 +886,7 @@
   }
 
   function start() {
-    if (rafId || reducedMotion) return;
+    if (rafId || reducedMotion || !ball) return;
     lastTime = performance.now();
     acc = 0;
     rafId = requestAnimationFrame(frame);
@@ -859,12 +898,15 @@
   document.addEventListener("visibilitychange", () => (document.hidden ? stop() : start()));
 
   // ------------------------------------------------------------------
-  // 리사이즈 (디바운스)
+  // 리사이즈 (프레임당 1회로 묶어 실시간 재배치 — 줄과 글자가 함께 따라옴)
   // ------------------------------------------------------------------
-  let resizeTimer = 0;
+  let resizeQueued = false;
   window.addEventListener("resize", () => {
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(() => {
+    if (resizeQueued) return;
+    resizeQueued = true;
+    requestAnimationFrame(() => {
+      resizeQueued = false;
+      if (!ball) return;
       W = window.innerWidth;
       H = window.innerHeight;
       if (grab) { Composite.remove(world, grab.constraint); grab = null; }
@@ -874,7 +916,7 @@
       resizeBall();
       if (reducedMotion) placeStaticBall();
       renderOnce();
-    }, 180);
+    });
   });
 
   // ------------------------------------------------------------------
@@ -884,19 +926,29 @@
     Body.setPosition(ball, { x: W - ballR - Math.min(80, W * 0.08), y: H - ballR });
   }
 
-  sizeCanvas();
-  buildWalls();
-  buildRopes();
-  createBall();
-  if (reducedMotion) {
-    // 물리 없이 정적인 세로 메뉴 + 정지된 구슬
-    document.getElementById("hint").textContent = "메뉴를 눌러 열어보세요";
-    placeStaticBall();
-    renderOnce();
-  } else {
-    renderOnce();
-    start();
+  function init() {
+    W = window.innerWidth;
+    H = window.innerHeight;
+    sizeCanvas();
+    buildWalls();
+    buildRopes();
+    createBall();
+    if (reducedMotion) {
+      // 물리 없이 정적인 세로 메뉴 + 정지된 구슬
+      document.getElementById("hint").textContent = "메뉴를 눌러 열어보세요";
+      placeStaticBall();
+      renderOnce();
+    } else {
+      renderOnce();
+      start();
+    }
   }
+
+  // 메뉴 글꼴(Pretendard 300) 로드 후 글자 바디 생성. CDN 실패 시에도 2.5초 뒤엔 시작.
+  const fontLoad = document.fonts
+    ? document.fonts.load('300 1em "Pretendard"').then(() => document.fonts.ready)
+    : Promise.resolve();
+  Promise.race([fontLoad, new Promise((r) => setTimeout(r, 2500))]).catch(() => {}).then(init);
   </script>
 </body>
 </html>
