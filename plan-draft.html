@@ -278,13 +278,14 @@
   </div>
   메인은 우측 상단, 하위 페이지는 푸터에 버튼이 있고, 고른 배색은 브라우저에 기억되어 모든 페이지에 이어진다. 포인트 옐로는 두 배색 모두 그대로 쓰고, 반전 배색에서는 메인 이름 외곽선만 흰색으로 바꾼다.</li>
 <li><strong>메뉴 구성</strong> — WORK(컬렉션·스와치) / JOURNAL(작업 일지) / ABOUT(Bio·Statement·CV) / CONTACT(연락하기). 천장에 매달린 줄 끝의 세로 글자로 표시하고, 줄을 당겼다 놓으면 열린다.</li>
+<li><strong>회전 레버 → 사이트맵</strong> — 메인 왼쪽 세로 중앙에 흰 직선 하나로 된 레버. 돌리면 화면이 레버 끝을 축으로 함께 돌면서 뒷면의 사이트맵이 올라온다. 상단의 PORTFOLIO 글자와 White/Blue · plan-draft 버튼은 제자리에 남는다.</li>
 <li><strong>참고 사이트</strong> — Day4에서 고른 스타일 <span class="tag">미정</span></li>
 </ul>
 
 <h2>04. 핵심 기능</h2>
 <h3>꼭 필요한 것</h3>
 <ol>
-<li><strong>줄 당기기 메뉴 + 유리구슬 메인 화면</strong> — 줄을 당겨 메뉴를 열고, 유리구슬을 잡아 던질 수 있는 물리 인터랙션. 모바일 터치에서도 동일하게 동작.</li>
+<li><strong>줄 당기기 메뉴 + 유리구슬 메인 화면</strong> — 줄을 당겨 메뉴를 열고, 유리구슬을 잡아 던질 수 있는 물리 인터랙션. 모바일 터치에서도 동일하게 동작. 왼쪽 레버를 돌리면 화면이 회전하며 사이트맵으로 바뀐다.</li>
 <li><strong>작업물 목록과 상세</strong> — 프로젝트를 카드로 모아 보고, 각 프로젝트는 개요 → 배경 → 과정 → 결과물 → 회고의 같은 틀로 읽는다.</li>
 <li><strong>소개와 연락처</strong> — 이름·전공·작업 방식·기술 스택, 이메일과 GitHub·인스타그램 링크.</li>
 </ol>
@@ -309,7 +310,7 @@
 <table>
 <thead><tr><th>화면</th><th>담당 기능</th><th>상태</th></tr></thead>
 <tbody>
-<tr><td>메인 (인덱스)</td><td>줄 당기기 메뉴 + 유리구슬 + 자수 방명록 (기능 1)</td><td>구현 완료</td></tr>
+<tr><td>메인 (인덱스)</td><td>줄 당기기 메뉴 + 유리구슬 + 자수 방명록 + 회전 레버 · 사이트맵 면 (기능 1)</td><td>구현 완료</td></tr>
 <tr><td>Work 목록</td><td>컬렉션 카드 · 스와치 그리드 · 기법 필터 (기능 2, 5)</td><td>틀 완성 · 예시 데이터</td></tr>
 <tr><td>컬렉션 상세</td><td>시리즈 소개와 포함 작품 (기능 2)</td><td>틀 완성 · 예시 데이터</td></tr>
 <tr><td>작품 상세</td><td>작품 케이스 스터디, 손 작업 과정 필수 (기능 2)</td><td>틀 완성 · 예시 데이터</td></tr>
@@ -326,12 +327,28 @@
 <p><strong>제작 순서</strong> — 공통 레이아웃 → Work(컬렉션 → 컬렉션 상세 → 작품 상세 → 스와치) → About → Contact → Journal.</p>
 <p><strong>보류 (2차)</strong> — 미공개 작업 보호 영역(Supabase Auth 또는 서명된 URL로), 본인 전용 관리자 페이지.</p>
 
-<h2>05-1. 하위 페이지 기능 한눈에 보기</h2>
+<h2>05-1. 화면별 기능 한눈에 보기</h2>
 <p class="legend">
   <span class="st ok">작동</span> 지금 바로 쓸 수 있음
   <span class="st demo">예시</span> 작동하지만 예시 내용이 보임 (실제 내용으로 교체 필요)
   <span class="st todo">연결 전</span> Supabase·파일이 있어야 완성
 </p>
+
+<h3>메인 — 회전 레버와 사이트맵 <code>index.html</code></h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>기능</th><th>하는 일</th><th>상태</th></tr></thead>
+<tbody>
+<tr><td>회전 레버</td><td>왼쪽 세로 중앙의 흰 직선. 아래쪽 끝을 축으로 12시 → 3시 → 6시 반원으로 돌아감. 묵직하게 살짝 늦게 따라오고, 놓으면 그 자리에 머묾</td><td><span class="st ok">작동</span></td></tr>
+<tr><td>사용법 힌트</td><td>돌아갈 방향을 가리키는 옅은 곡선 화살표 + 궤적 점 3개 (0° · 90° · 180°)</td><td><span class="st ok">작동</span></td></tr>
+<tr><td>화면 회전</td><td>레버를 돌리는 만큼 화면(배경 · 줄 · 구슬 · 자수 · 작가 소개)이 레버 끝을 축으로 함께 돎. 상단 PORTFOLIO · White/Blue · plan-draft는 제자리</td><td><span class="st ok">작동</span></td></tr>
+<tr><td>사이트맵 면</td><td>끝까지 돌리면 뒷면의 사이트맵이 똑바로 섬. Work · Journal · About · Contact와 하위 항목 링크</td><td><span class="st ok">작동</span></td></tr>
+<tr><td>조작 잠금</td><td>화면이 돌아간 동안에는 줄 · 구슬을 잡을 수 없고, 사이트맵 링크는 거의 다 돌았을 때만 눌림</td><td><span class="st ok">작동</span></td></tr>
+<tr><td>값 기억</td><td>레버 위치를 브라우저에 저장해 다시 열면 그대로 (사이트맵을 연 채 나가면 사이트맵으로 시작)</td><td><span class="st ok">작동</span></td></tr>
+<tr><td>키보드</td><td>레버에 포커스 후 ←/↓ · →/↑로 조금씩, Home/End로 끝까지</td><td><span class="st ok">작동</span></td></tr>
+</tbody>
+</table>
+</div>
 
 <h3>공통 (모든 하위 페이지)</h3>
 <div class="table-wrap">
