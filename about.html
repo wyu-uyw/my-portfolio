@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>About</title>
+<meta name="description" content="소개, 이력, 기술과 도구">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
+<link href="assets/site.css" rel="stylesheet">
+<style>
+  .profile { display: grid; gap: 24px; align-items: end; margin-top: 8px; }
+  @media (min-width: 720px) { .profile { grid-template-columns: 240px 1fr; gap: 40px; } }
+  .profile .ph, .profile .media { max-width: 240px; }
+  .name {
+    margin: 4px 0 8px;
+    font-weight: 300;
+    font-size: clamp(44px, 8vw, 96px);
+    line-height: 1;
+    letter-spacing: 0.02em;
+    -webkit-text-stroke: 1.5px var(--accent);
+    paint-order: stroke fill;
+  }
+  .one-liner { margin: 0; color: var(--accent); font-size: 17px; }
+  .intro p { font-size: 17px; max-width: 38em; margin: 0 0 1em; }
+
+  .timeline { display: grid; gap: 8px 40px; }
+  @media (min-width: 820px) { .timeline { grid-template-columns: 1fr 1fr; } }
+  .tl-group h3 { margin: 16px 0 8px; font-size: 14px; font-weight: 500; letter-spacing: 0.1em; color: var(--accent); }
+  .tl-group ol { list-style: none; margin: 0; padding: 0; }
+  .tl-group li { display: grid; grid-template-columns: 56px 1fr; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .tl-group time { color: var(--text-soft); font-variant-numeric: tabular-nums; }
+
+  .skills { display: grid; gap: 24px; }
+  @media (min-width: 720px) { .skills { grid-template-columns: 1fr 1fr; gap: 40px; } }
+  .skills h3 { margin: 0 0 10px; font-size: 13px; font-weight: 500; letter-spacing: 0.14em; color: var(--text-soft); }
+  .skills ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+  .skills li { padding: 6px 14px; border: 1px solid var(--line-strong); border-radius: 999px; font-size: 14px; }
+</style>
+</head>
+<body data-page="about">
+  <main>
+    <section class="profile" aria-label="프로필">
+      <div id="photo"></div>
+      <div>
+        <p class="kicker">About</p>
+        <h1 class="name" id="name"></h1>
+        <p class="one-liner" id="one-liner"></p>
+      </div>
+    </section>
+
+    <h2 class="section-title">Introduction</h2>
+    <div class="intro" id="intro"></div>
+
+    <h2 class="section-title">History</h2>
+    <div class="timeline" id="timeline"></div>
+
+    <h2 class="section-title">Skills &amp; Tools</h2>
+    <div class="skills">
+      <div><h3>기법</h3><ul id="skills"></ul></div>
+      <div><h3>소프트웨어</h3><ul id="tools"></ul></div>
+    </div>
+
+    <h2 class="section-title">CV</h2>
+    <a class="btn solid" id="cv">CV PDF 다운로드</a>
+  </main>
+
+  <script src="assets/site.js"></script>
+  <script src="assets/data.js"></script>
+  <script>
+  document.getElementById("photo").innerHTML = media(ABOUT.photo, SITE.name, "3 / 4", "PHOTO");
+  document.getElementById("name").textContent = SITE.name;
+  document.getElementById("one-liner").textContent = ABOUT.oneLiner;
+  document.getElementById("intro").innerHTML = ABOUT.intro.map((t) => `<p>${esc(t)}</p>`).join("");
+  document.getElementById("skills").innerHTML = ABOUT.skills.map((s) => `<li>${esc(s)}</li>`).join("");
+  document.getElementById("tools").innerHTML = ABOUT.tools.map((s) => `<li>${esc(s)}</li>`).join("");
+
+  const cv = document.getElementById("cv");
+  if (SITE.cvUrl) {
+    cv.href = SITE.cvUrl;
+    cv.setAttribute("download", "");
+  } else {
+    cv.textContent = "CV 준비 중";
+    cv.setAttribute("aria-disabled", "true");
+  }
+
+  // 이력: 구분별로 묶고, 각 구분 안은 연도 역순 (DB.history가 정렬해서 줌)
+  DB.history().then((items) => {
+    document.getElementById("timeline").innerHTML = Object.entries(LABELS.history).map(([kind, label]) => {
+      const rows = items.filter((h) => h.kind === kind);
+      if (!rows.length) return "";
+      return `
+        <section class="tl-group">
+          <h3>${label}</h3>
+          <ol>${rows.map((h) => `<li><time>${esc(h.year)}</time><span>${esc(h.text)}</span></li>`).join("")}</ol>
+        </section>`;
+    }).join("");
+  });
+  </script>
+</body>
+</html>

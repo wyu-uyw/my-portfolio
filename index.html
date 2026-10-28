@@ -205,6 +205,18 @@
       0 30px 54px -18px color-mix(in srgb, var(--bg-dark) 55%, transparent);
   }
 
+  /* ---------- 하위 페이지로 넘어갈 때 덮는 페이드 ---------- */
+  #page-fade {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    background: var(--bg);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.35s ease;
+  }
+  #page-fade.on { opacity: 1; }
+
   /* ---------- 준비 중 오버레이 ---------- */
   #overlay {
     position: fixed;
@@ -307,6 +319,8 @@
     <div id="glass"></div>
   </div>
 
+  <div id="page-fade" aria-hidden="true"></div>
+
   <div id="overlay" role="dialog" aria-modal="true" aria-labelledby="ov-title">
     <div class="ov-inner">
       <p class="ov-kicker">준비 중</p>
@@ -331,9 +345,10 @@
   // ===================================================================
   const CONFIG = {
     menus: [
-      { label: "ABOUT",   href: "#about" },
-      { label: "WORK",    href: "#work" },
-      { label: "CONTACT", href: "#contact" },
+      { label: "WORK",    href: "work.html" },
+      { label: "JOURNAL", href: "journal.html" },
+      { label: "ABOUT",   href: "about.html" },
+      { label: "CONTACT", href: "contact.html" },
     ],
     rope: {
       segments: 12,          // 줄 마디 수
@@ -373,6 +388,9 @@
   const lettersEl = document.getElementById("letters");
   const glassEl = document.getElementById("glass");
   const overlay = document.getElementById("overlay");
+  const pageFade = document.getElementById("page-fade");
+  // 뒤로가기(bfcache)로 돌아왔을 때 덮개 해제
+  window.addEventListener("pageshow", (e) => { if (e.persisted) pageFade.classList.remove("on"); });
 
   const engine = Engine.create({
     positionIterations: 10,
@@ -720,7 +738,10 @@
 
   function openPage(menu, rope) {
     if (!menu.href.startsWith("#")) {
-      window.location.href = menu.href;
+      // 줄이 끊긴 직후 화면을 배경색으로 덮으며 하위 페이지로 (하위 페이지는 페이드인으로 시작)
+      if (reducedMotion) { window.location.href = menu.href; return; }
+      pageFade.classList.add("on");
+      setTimeout(() => (window.location.href = menu.href), 350);
       return;
     }
     openRope = rope;
@@ -1142,6 +1163,34 @@
     Body.setPosition(ball, { x: W - ballR - Math.min(80, W * 0.08), y: H - ballR });
   }
 
+  // 하위 페이지에서 '메인으로'를 눌러 돌아왔는지 (assets/site.js가 표시)
+  function consumeRehang() {
+    try {
+      const v = sessionStorage.getItem("rehang");
+      sessionStorage.removeItem("rehang");
+      return v === "1";
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // 줄이 다시 매달리는 연출: 모든 줄을 같은 각도로 들어 올린 채 시작해 진자처럼 흔들리며 내려오게.
+  // 마디 간 거리는 그대로라 제약이 깨지지 않고, 같은 방향이라 줄끼리 겹치지 않는다.
+  function swingRopes() {
+    const spacing = metrics().spacing;
+    for (const rope of ropes) {
+      const last = rope.letters[rope.letters.length - 1];
+      const len = last.position.y;
+      const a = Math.min(0.35, Math.asin(Math.min(1, (spacing * 0.8) / len)));
+      const cos = Math.cos(a), sin = Math.sin(a);
+      for (const b of [...rope.segs, ...rope.gaps.flat(), ...rope.letters]) {
+        const dx = b.position.x - rope.ax, dy = b.position.y;
+        Body.setPosition(b, { x: rope.ax + dx * cos - dy * sin, y: dx * sin + dy * cos });
+        Body.setAngle(b, a);
+      }
+    }
+  }
+
   function init() {
     W = window.innerWidth;
     H = window.innerHeight;
@@ -1149,6 +1198,7 @@
     stitchResize();
     buildWalls();
     buildRopes();
+    if (consumeRehang() && !reducedMotion) swingRopes();
     createBall();
     if (reducedMotion) {
       // 물리 없이 정적인 세로 메뉴 + 정지된 구슬

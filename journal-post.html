@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Journal Post</title>
+<meta name="description" content="저널 글">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
+<link href="assets/site.css" rel="stylesheet">
+<style>
+  article { max-width: 720px; margin: 0 auto; }
+  .post-title { margin: 8px 0 12px; font-weight: 300; font-size: clamp(32px, 6vw, 56px); line-height: 1.15; }
+  .meta { font-size: 13px; letter-spacing: 0.08em; color: var(--text-soft); margin-bottom: 40px; }
+  .meta a { color: var(--accent); text-decoration: none; }
+  .body p { font-size: 17px; margin: 0 0 1.4em; }
+  .body figure { margin: 2em 0; }
+  .body figcaption { margin-top: 8px; font-size: 13px; color: var(--text-soft); }
+  .related { display: flex; gap: 16px; align-items: center; padding: 16px; border: 1px solid var(--line); text-decoration: none; margin-top: 40px; }
+  .related:hover { border-color: var(--accent); }
+  .related .ph, .related .media { width: 72px; flex: none; }
+  .related small { display: block; font-size: 11px; letter-spacing: 0.16em; color: var(--accent); }
+</style>
+</head>
+<body data-page="journal">
+  <main><article id="post"><p class="empty">불러오는 중…</p></article></main>
+
+  <script src="assets/site.js"></script>
+  <script src="assets/data.js"></script>
+  <script>
+  const el = document.getElementById("post");
+
+  function pagerLink(p, cls, label) {
+    if (!p) return `<span class="${cls}"></span>`;
+    return `<a class="${cls}" href="journal-post.html?id=${encodeURIComponent(p.id)}"><small>${label}</small>${esc(p.title)}</a>`;
+  }
+
+  async function load() {
+    const posts = await DB.posts();          // 최신순
+    const i = posts.findIndex((p) => p.id === param("id"));
+    if (i < 0) {
+      el.innerHTML = `<p class="empty">글을 찾을 수 없어요.<br><br><a class="btn" href="journal.html">목록으로</a></p>`;
+      return;
+    }
+    const p = posts[i];
+    const work = p.related_work_id ? await DB.work(p.related_work_id) : null;
+    document.title = `${p.title} — Journal`;
+
+    el.innerHTML = `
+      <p class="kicker">${LABELS.category[p.category]}</p>
+      <h1 class="post-title">${esc(p.title)}</h1>
+      <div class="meta"><time datetime="${p.date}">${formatDate(p.date)}</time> · <a href="journal.html?category=${p.category}">${LABELS.category[p.category]}</a></div>
+      <div class="body">
+        ${p.body.map((b) => b.type === "img"
+          ? `<figure>${media(b.src, b.caption, "3 / 2")}<figcaption>${esc(b.caption)}</figcaption></figure>`
+          : `<p>${esc(b.text)}</p>`).join("")}
+      </div>
+      ${work ? `
+      <a class="related" href="work-detail.html?id=${encodeURIComponent(work.id)}">
+        ${media(work.cover, work.title, "1 / 1", "")}
+        <div><small>RELATED WORK</small>${esc(work.title)} <span class="muted">· ${work.year}</span></div>
+      </a>` : ""}
+      <nav class="pager" aria-label="글 이동">
+        ${pagerLink(posts[i + 1], "prev", "← PREV")}
+        <a class="list" href="journal.html">LIST</a>
+        ${pagerLink(posts[i - 1], "next", "NEXT →")}
+      </nav>`;
+  }
+  load();
+  </script>
+</body>
+</html>

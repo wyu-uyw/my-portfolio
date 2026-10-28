@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Contact</title>
+<meta name="description" content="연락처와 문의 폼">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
+<link href="assets/site.css" rel="stylesheet">
+<style>
+  .status { display: inline-flex; align-items: center; gap: 10px; margin: 0 0 40px; color: var(--accent); }
+  .status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 25%, transparent); }
+  .layout { display: grid; gap: 48px; }
+  @media (min-width: 860px) { .layout { grid-template-columns: 1fr 1.2fr; gap: 64px; } }
+  .email {
+    font: inherit;
+    font-weight: 300;
+    font-size: clamp(22px, 3.2vw, 34px);
+    line-height: 1.2;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--text);
+    cursor: pointer;
+    text-align: left;
+    overflow-wrap: anywhere;
+    border-bottom: 1px solid var(--line-strong);
+  }
+  .email:hover { color: var(--accent); border-color: var(--accent); }
+  .copied { min-height: 1.6em; font-size: 13px; color: var(--accent); margin: 8px 0 24px; }
+  .sns { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px; }
+
+  form { display: grid; gap: 18px; }
+  label { display: grid; gap: 6px; font-size: 13px; letter-spacing: 0.1em; color: var(--text-soft); }
+  input, select, textarea {
+    font: inherit;
+    font-size: 16px;
+    color: var(--text);
+    background: var(--fill);
+    border: 1px solid var(--line-strong);
+    border-radius: 0;
+    padding: 11px 12px;
+    letter-spacing: 0;
+  }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
+  select option { color: #111; }
+  textarea { min-height: 160px; resize: vertical; }
+  .row { display: grid; gap: 18px; }
+  @media (min-width: 560px) { .row { grid-template-columns: 1fr 1fr; } }
+  .form-msg { min-height: 1.6em; margin: 0; font-size: 14px; }
+  .form-msg.err { color: var(--accent); }
+</style>
+</head>
+<body data-page="contact">
+  <main>
+    <p class="kicker">Contact</p>
+    <h1 class="page-title">Say hello</h1>
+    <p class="status" id="status"></p>
+
+    <div class="layout">
+      <section aria-label="연락처">
+        <h2 class="section-title" style="margin-top:0">Email</h2>
+        <button class="email" id="email" type="button"></button>
+        <p class="copied" id="copied" aria-live="polite"></p>
+
+        <h2 class="section-title">SNS</h2>
+        <ul class="sns" id="sns"></ul>
+      </section>
+
+      <section aria-label="문의 폼">
+        <h2 class="section-title" style="margin-top:0">Inquiry</h2>
+        <form id="form" novalidate>
+          <div class="row">
+            <label>이름<input name="name" autocomplete="name" required></label>
+            <label>이메일<input name="email" type="email" autocomplete="email" required></label>
+          </div>
+          <label>문의 유형
+            <select name="type" required>
+              <option value="collab">협업</option>
+              <option value="commission">외주</option>
+              <option value="etc">기타</option>
+            </select>
+          </label>
+          <label>내용<textarea name="message" required></textarea></label>
+          <div><button class="btn solid" type="submit">보내기</button></div>
+          <p class="form-msg" id="form-msg" aria-live="polite"></p>
+        </form>
+      </section>
+    </div>
+  </main>
+
+  <script src="assets/site.js"></script>
+  <script src="assets/data.js"></script>
+  <script>
+  document.getElementById("status").textContent = SITE.status;
+  document.getElementById("sns").innerHTML =
+    `<li><a class="btn" href="${esc(SITE.instagram)}" target="_blank" rel="noopener">${esc(SITE.instagramLabel)} ↗</a></li>`;
+
+  // 이메일: 클릭하면 주소 복사 + 메일 앱 열기
+  const emailBtn = document.getElementById("email");
+  const copied = document.getElementById("copied");
+  emailBtn.textContent = SITE.email;
+  emailBtn.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(SITE.email);
+      copied.textContent = "주소를 복사했어요. 메일 앱을 여는 중…";
+    } catch (_) {
+      copied.textContent = "메일 앱을 여는 중…";
+    }
+    location.href = "mailto:" + SITE.email;
+  });
+
+  const form = document.getElementById("form");
+  const msg = document.getElementById("form-msg");
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(form));
+    for (const k of ["name", "email", "message"]) data[k] = data[k].trim();
+    const invalid = !data.name ? "이름" : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email) ? "이메일" : !data.message ? "내용" : "";
+    if (invalid) {
+      msg.className = "form-msg err";
+      msg.textContent = `${invalid}을(를) 확인해 주세요.`;
+      form.elements[{ "이름": "name", "이메일": "email", "내용": "message" }[invalid]].focus();
+      return;
+    }
+
+    const res = await DB.submitInquiry(data);
+    if (res.ok) {
+      form.reset();
+      msg.className = "form-msg";
+      msg.textContent = "보냈어요. 확인 후 답장드릴게요.";
+      return;
+    }
+    // 저장소 연결 전: 작성한 내용으로 메일 앱을 연다
+    const subject = `[${LABELS.inquiry[data.type]}] ${data.name}님의 문의`;
+    const body = `${data.message}\n\n— ${data.name} (${data.email})`;
+    location.href = `mailto:${SITE.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    msg.className = "form-msg";
+    msg.textContent = "메일 앱으로 이어서 보내 주세요. (문의 저장 기능은 준비 중)";
+  });
+  </script>
+</body>
+</html>

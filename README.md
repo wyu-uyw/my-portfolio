@@ -10,7 +10,7 @@
 
 ## 0. 작업 범위
 - 목표: 포트폴리오 사이트의 **메인 인덱스 화면 1개**만 구현한다.
-- 하위 페이지(메뉴별 상세 페이지)는 이번 범위에서 제외. 링크 대상은 placeholder로 둔다.
+- 하위 페이지는 11장 참고 (메인은 단일 `index.html`, 하위 페이지는 공통 `assets/`를 공유).
 - 결과물: 단일 파일 `index.html` (HTML + CSS + JS 인라인).
 - 외부 라이브러리는 CDN으로만 로드 (물리엔진: Matter.js 권장 — cdnjs).
 - 배포: GitHub 저장소 → GitHub Pages. 빌드 도구 사용하지 않음.
@@ -28,9 +28,10 @@
 ```js
 const CONFIG = {
   menus: [
-    { label: "ABOUT",   href: "#about" },
-    { label: "WORK",    href: "#work" },
-    { label: "CONTACT", href: "#contact" },
+    { label: "WORK",    href: "work.html" },
+    { label: "JOURNAL", href: "journal.html" },
+    { label: "ABOUT",   href: "about.html" },
+    { label: "CONTACT", href: "contact.html" },
   ],
   rope: {
     segments: 12,          // 줄 마디 수
@@ -72,7 +73,8 @@ const CONFIG = {
   - 놓으면 진자처럼 흔들리다 감쇠되어 원위치로 돌아옴.
   - **당김 판정**: 드래그 중 해당 메뉴 사슬의 마지막 글자가 기본 위치 대비 `pullThreshold` 이상 아래로 내려간 상태에서 손을 놓으면 → 해당 메뉴의 페이지 열림.
     - 열림 연출: 줄이 '툭' 끊기는 효과(고정점 Constraint 제거 → 글자들이 바닥으로 떨어짐) 후 화면 전환.
-    - 하위 페이지는 미구현이므로 지금은 `href`로 이동하거나, 화면 전체에 페이드 오버레이 + "준비 중: {label}" 표시 후 닫기 버튼으로 복귀 (복귀 시 줄 재생성).
+    - `href`가 페이지 주소면: 줄이 끊긴 뒤 화면을 배경색으로 덮는 페이드(0.35초) 후 해당 하위 페이지로 이동 (11장).
+    - `href`가 `#`으로 시작하면: 화면 전체에 "준비 중: {label}" 오버레이 후 닫기 버튼으로 복귀 (복귀 시 줄 재생성). 아직 페이지가 없는 메뉴용.
   - 임계값 근처에서는 줄 색이나 글자 투명도를 살짝 바꿔 "더 당기면 열린다"는 피드백 제공.
 
 ## 4. 리퀴드 글래스 구슬
@@ -166,7 +168,7 @@ const CONFIG = {
 - [ ] 글자가 실에 꿴 구슬처럼 간격을 두고 매달려 있고, 글자 사이에도 실이 이어진다 (비즈발).
 - [ ] 구슬이 글자 사이 실 틈으로 빠져나가지 않는다.
 - [ ] 줄에 매달린 세로 글자를 드래그하면 줄 전체가 자연스럽게 흔들리고, 놓으면 감쇠되어 멈춘다.
-- [ ] 임계값 이상 당긴 뒤 놓으면 줄이 끊기는 연출 후 해당 메뉴 페이지(placeholder)가 열린다.
+- [ ] 임계값 이상 당긴 뒤 놓으면 줄이 끊기는 연출 후 해당 메뉴 페이지로 페이드 전환된다.
 - [ ] 로드 시 구슬이 위에서 떨어져 바닥에 안착한다.
 - [ ] 구슬을 홀드-드래그로 자유롭게 옮기고 던질 수 있다.
 - [ ] 구슬이 줄/글자와 부딪히면 줄이 흔들린다.
@@ -193,7 +195,7 @@ const CONFIG = {
 
 ## 9. 2단계 예정 (이번엔 구현 X)
 - Supabase `menu_items` 테이블(label, href, order)에서 메뉴를 불러와 CONFIG.menus를 대체.
-- 메뉴별 하위 페이지 구현.
+- ~~메뉴별 하위 페이지 구현.~~ → 11장에서 틀 구현 완료 (데이터는 예시).
 
 ## 10. 십자수 자수 방명록
 
@@ -257,3 +259,134 @@ const CONFIG = {
 - [ ] 스티치가 약 10초 뒤 서서히 옅어지며 사라진다
 - [ ] 스티치와 겹쳐도 메인 화면 텍스트가 읽힌다 (자수 불투명도 최대 80%)
 - [ ] 기존 기능이 전부 그대로 동작한다
+
+## 11. 하위 페이지 (사이트 지도)
+
+### 전체 구조
+```
+/ (index.html) ─ 메인: 줄에 매달린 메뉴 4개 + 리퀴드 글래스 구슬 + 자수 방명록
+│
+├─ Work (work.html)
+│   ├─ 섹션 필터: All / Projects / Swatch
+│   ├─ 기법 태그 필터: Weave / Print / Stitch / Dye (복수 선택)
+│   └─ 작업 상세 (work-detail.html?id=xxx)
+│       ├─ 대표 이미지
+│       ├─ 개요: 제목, 연도, 분류(Projects/Swatch), 기법 태그
+│       ├─ 컨셉 설명
+│       ├─ 소재 정보: 섬유 조성, 기법, 크기, 사용 도구
+│       ├─ 과정: 스케치 → 패턴 전개 → 샘플 → 완성 (이미지 + 짧은 설명)
+│       ├─ 완성 이미지 갤러리 (디테일 확대 컷 포함)
+│       └─ 이전 / 다음 작업, 목록으로
+│
+├─ Journal (journal.html)
+│   ├─ 카테고리 필터: Making / Research / Exhibition / Note
+│   ├─ 글 목록: 날짜, 제목, 카테고리, 썸네일, 한 줄 요약 (최신순)
+│   └─ 글 상세 (journal-post.html?id=xxx)
+│       ├─ 제목, 날짜, 카테고리
+│       ├─ 본문 (텍스트 + 이미지)
+│       ├─ 관련 작업 링크 (Work 상세로 연결, 선택)
+│       └─ 이전 / 다음 글, 목록으로
+│
+├─ About (about.html)
+│   ├─ 프로필: 사진, 이름, 한 줄 소개
+│   ├─ 소개글: 작업 관심사, 다루는 소재와 기법
+│   ├─ 이력 타임라인 (연도 역순, 항목 추가가 쉬운 구조)
+│   │   ├─ 학력
+│   │   ├─ 전시
+│   │   ├─ 수상
+│   │   └─ 경력 / 활동
+│   ├─ Skills & Tools: 직조, 프린트, 자수, 염색 / 사용 소프트웨어
+│   └─ CV PDF 다운로드
+│
+└─ Contact (contact.html)
+    ├─ 이메일 (클릭 시 복사 + 메일 앱 열기)
+    ├─ SNS 링크: Instagram 등
+    ├─ 문의 폼: 이름, 이메일, 문의 유형(협업/외주/기타), 내용
+    └─ 현재 상태 한 줄: 예) "협업 문의 가능 / 2027.02 졸업 예정"
+```
+
+### 파일 구성
+| 파일 | 역할 |
+|---|---|
+| `assets/site.css` | 하위 페이지 공통 스타일 (색 변수, + 격자 배경, 헤더·푸터, 칩·카드·버튼, 이미지 자리) |
+| `assets/site.js` | 공통 동작: `SITE` 설정(이름·이메일·SNS·상태·CV), 헤더/푸터 주입, 격자 중앙 정렬, 페이지 전환, 유틸(`esc`, `param`, `media`, `formatDate`) |
+| `assets/data.js` | 데이터 계층: `DB.*` 함수, 라벨(`LABELS`), 예시 데이터(`SAMPLE`), About 고정 내용(`ABOUT`) |
+| `work.html` · `work-detail.html` | 작업 목록 / 상세 |
+| `journal.html` · `journal-post.html` | 저널 목록 / 글 |
+| `about.html` · `contact.html` | 소개 / 연락 |
+
+- 각 페이지는 `<body data-page="work">`처럼 현재 메뉴를 표시하고, `site.js` → `data.js` 순서로 불러온 뒤 페이지 전용 스크립트를 실행한다.
+- 메인 `index.html`은 지금처럼 단일 파일을 유지한다 (공통 `assets/`를 쓰지 않음).
+
+### 공통 요소 (모든 하위 페이지)
+- 디자인 언어 유지: 파란 배경(#0356fc), 흰 글자, Pretendard 300, 미세한 + 격자 배경
+  - + 격자는 메인과 같은 24px 타일, 같은 화면 중앙 기준 (`--grid-ox/oy`). 파란 바탕 흰 글자에 200 굵기는 쓰지 않는다.
+  - 강조(현재 메뉴, 호버, 카테고리, 이력 구분)는 포인트 옐로 `--accent`.
+- 좌측 상단: 메인으로 돌아가기 (메인으로 가면 줄이 다시 매달리는 연출)
+  - `site.js`가 메인으로 가는 링크 클릭 시 `sessionStorage.rehang = "1"`을 남긴다.
+  - 메인은 시작할 때 이 값을 읽고 지운 뒤, 모든 줄을 같은 각도(최대 약 20°, 줄 간격의 80%를 넘지 않게)로 들어 올린 채 시작해 진자처럼 흔들리며 내려오게 한다. 마디 사이 거리는 그대로라 물리 제약이 깨지지 않고, 모든 줄이 같은 방향이라 서로 겹치지 않는다.
+- 우측 상단: 다른 메뉴로 이동하는 작은 텍스트 네비게이션 (Work · Journal · About · Contact). 현재 페이지는 `aria-current="page"` + 노랑 밑줄.
+- 하단: 이메일, Instagram, © 이름 연도
+- 페이지 진입: 메인에서 줄이 끊긴 직후 해당 페이지로 자연스럽게 페이드 전환
+  - 메인: 줄 끊김(0.65초) → 배경색 덮개 페이드인(0.35초) → 이동.
+  - 하위 페이지: 본문이 0.5초 페이드인으로 시작. 사이트 안 링크 이동은 0.28초 페이드아웃 후 이동.
+  - 뒤로가기(bfcache)로 돌아오면 덮개를 해제한다. `prefers-reduced-motion`이면 페이드 없이 바로 이동.
+
+### 페이지별 구현 메모
+- **Work 목록**: 섹션은 하나만, 기법은 여러 개 선택. 기법은 선택한 것 중 **하나라도** 쓴 작업을 보여준다 (OR). 필터 상태는 주소(`?section=projects&tech=weave,print`)에 남아 공유·새로고침 시 유지된다.
+- **Work 상세**: `?id=`로 찾는다. 이전/다음은 목록 정렬 순서(`sort`) 기준. 과정·갤러리가 비어 있으면 그 섹션을 숨긴다. 기법 태그를 누르면 그 기법으로 거른 목록으로 이동.
+- **Journal**: 최신순(`date` 내림차순). 카테고리 필터는 `?category=`로 유지. 본문은 블록 배열(`{type:"p", text}` / `{type:"img", src, caption}`).
+- **About**: 이력은 구분(학력·전시·수상·경력/활동)별로 묶고, 각 구분 안은 연도 역순. `SITE.cvUrl`이 없으면 CV 버튼은 '준비 중'으로 비활성.
+- **Contact**: 이메일을 누르면 클립보드 복사 후 메일 앱을 연다. 문의 폼은 이름·이메일 형식·내용을 검사한 뒤 `DB.submitInquiry`로 보낸다. 저장소 연결 전에는 작성 내용을 제목·본문에 채운 메일 앱으로 대체한다.
+- **이미지 자리**: 이미지 주소가 없으면 X 스티치 무늬 상자(`.ph`)와 라벨로 표시한다. 데이터에 주소가 들어오면 같은 비율의 `<img>`로 바뀐다.
+- 데이터를 HTML에 넣을 때는 항상 `esc()`로 이스케이프한다.
+
+### 데이터 관리 (Supabase)
+코드를 고치지 않고 내용을 추가할 수 있도록, 반복해서 늘어나는 데이터는 Supabase 테이블로 관리:
+- `works`: 작업 (분류, 기법 태그, 소재 정보, 이미지 목록, 공개 여부, 정렬 순서)
+- `journal_posts`: 저널 글 (카테고리, 본문, 이미지, 관련 작업 id, 공개 여부)
+- `history`: About 이력 (구분, 연도, 내용, 정렬 순서)
+- `inquiries`: Contact 문의 (insert만 허용, 조회는 대시보드에서 나만)
+- `stitches`: 메인 자수 방명록 (10장 2단계)
+- 이미지는 Supabase Storage 버킷에 저장
+
+**현재 상태**: Supabase 연결 전. `assets/data.js`의 `SAMPLE`이 위 테이블과 같은 모양의 **예시 데이터**를 제공한다. 연결 시 `DB.*` 함수 안쪽만 테이블 조회로 바꾸면 페이지 코드는 그대로 쓸 수 있다.
+
+| `DB` 함수 | 테이블 | 조건 |
+|---|---|---|
+| `DB.works()` / `DB.work(id)` | `works` | `published = true`, `sort` 오름차순 |
+| `DB.posts()` / `DB.post(id)` | `journal_posts` | `published = true`, `date` 내림차순 |
+| `DB.history()` | `history` | `year` 내림차순, 같은 해는 `sort` 오름차순 |
+| `DB.submitInquiry(data)` | `inquiries` | insert만. 성공 시 `{ ok: true }` |
+
+필드 모양 (예시 데이터 기준):
+- `works`: `id, title, year, section('projects'|'swatch'), techniques[], summary, concept, materials{fiber, technique, size, tools}, cover, process[{step, image, text}], gallery[{src, caption, detail}], published, sort`
+- `journal_posts`: `id, title, date, category, thumbnail, summary, body[], related_work_id, published`
+- `history`: `id, kind('education'|'exhibition'|'award'|'activity'), year, text, sort`
+- `inquiries`: `name, email, type('collab'|'commission'|'etc'), message`
+
+### 메인 메뉴 설정 변경
+```js
+menus: [
+  { label: "WORK",    href: "work.html" },
+  { label: "JOURNAL", href: "journal.html" },
+  { label: "ABOUT",   href: "about.html" },
+  { label: "CONTACT", href: "contact.html" },
+]
+```
+
+### 제작 우선순위
+1. 공통 레이아웃 (헤더, 푸터, 배경) — 모든 하위 페이지가 공유
+2. Work 목록 + 상세 — 포트폴리오의 핵심
+3. About — 이력 타임라인
+4. Contact — 문의 폼
+5. Journal 목록 + 상세
+
+### 하위 페이지 확인
+- [ ] 메인에서 줄을 끝까지 당겼다 놓으면 끊긴 뒤 해당 페이지로 페이드 전환된다
+- [ ] 하위 페이지 좌측 상단으로 메인에 돌아가면 줄이 흔들리며 다시 매달린다
+- [ ] 우측 상단 메뉴에 현재 페이지가 표시되고, 다른 메뉴로 이동할 수 있다
+- [ ] Work 필터(섹션 1개 + 기법 여러 개)가 동작하고 주소에 남는다
+- [ ] 상세 페이지의 이전/다음/목록 이동이 동작한다
+- [ ] Contact 이메일 클릭 시 복사 + 메일 앱이 열린다
+- [ ] 모바일 폭(390px)에서 가로 스크롤 없이 읽힌다

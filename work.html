@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Work</title>
+<meta name="description" content="작업 목록 — Projects와 Swatch">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
+<link href="assets/site.css" rel="stylesheet">
+</head>
+<body data-page="work">
+  <main>
+    <p class="kicker">Portfolio</p>
+    <h1 class="page-title">Work</h1>
+    <p class="page-lead">완성한 프로젝트와, 소재·기법을 실험한 스와치를 모았습니다.</p>
+
+    <div class="filters">
+      <div class="chip-row" role="group" aria-label="섹션">
+        <span class="chip-label">SECTION</span>
+        <button class="chip" type="button" data-section="all">All</button>
+        <button class="chip" type="button" data-section="projects">Projects</button>
+        <button class="chip" type="button" data-section="swatch">Swatch</button>
+      </div>
+      <div class="chip-row" role="group" aria-label="기법 (복수 선택)">
+        <span class="chip-label">TECHNIQUE</span>
+        <button class="chip" type="button" data-tech="weave">Weave</button>
+        <button class="chip" type="button" data-tech="print">Print</button>
+        <button class="chip" type="button" data-tech="stitch">Stitch</button>
+        <button class="chip" type="button" data-tech="dye">Dye</button>
+      </div>
+    </div>
+
+    <p id="count" class="muted" aria-live="polite"></p>
+    <div id="list" class="grid"></div>
+  </main>
+
+  <script src="assets/site.js"></script>
+  <script src="assets/data.js"></script>
+  <script>
+  // 필터 상태는 주소(?section=&tech=)에 남겨 공유·뒤로가기 시 유지
+  const state = {
+    section: param("section") || "all",
+    tech: new Set((param("tech") || "").split(",").filter((t) => t in LABELS.technique)),
+  };
+  let works = [];
+
+  function syncUrl() {
+    const q = new URLSearchParams();
+    if (state.section !== "all") q.set("section", state.section);
+    if (state.tech.size) q.set("tech", [...state.tech].join(","));
+    history.replaceState(null, "", q.toString() ? "?" + q : location.pathname);
+  }
+
+  function render() {
+    document.querySelectorAll("[data-section]").forEach((b) =>
+      b.setAttribute("aria-pressed", String(b.dataset.section === state.section)));
+    document.querySelectorAll("[data-tech]").forEach((b) =>
+      b.setAttribute("aria-pressed", String(state.tech.has(b.dataset.tech))));
+
+    // 기법은 선택한 것 중 하나라도 쓴 작업을 보여준다 (OR)
+    const shown = works.filter((w) =>
+      (state.section === "all" || w.section === state.section) &&
+      (!state.tech.size || w.techniques.some((t) => state.tech.has(t))));
+
+    document.getElementById("count").textContent = `${shown.length}개 작업`;
+    document.getElementById("list").innerHTML = shown.length
+      ? shown.map((w) => `
+        <a class="card" href="work-detail.html?id=${encodeURIComponent(w.id)}">
+          ${media(w.cover, w.title, "4 / 5", LABELS.section[w.section].toUpperCase())}
+          <h2 class="card-title">${esc(w.title)}</h2>
+          <div class="card-meta">${w.year} · ${LABELS.section[w.section]}</div>
+          <div class="tags">${w.techniques.map((t) => `<span class="tag">${LABELS.technique[t]}</span>`).join("")}</div>
+        </a>`).join("")
+      : `<p class="empty">조건에 맞는 작업이 없어요.</p>`;
+  }
+
+  document.querySelectorAll("[data-section]").forEach((b) => b.addEventListener("click", () => {
+    state.section = b.dataset.section;
+    syncUrl(); render();
+  }));
+  document.querySelectorAll("[data-tech]").forEach((b) => b.addEventListener("click", () => {
+    const t = b.dataset.tech;
+    state.tech.has(t) ? state.tech.delete(t) : state.tech.add(t);
+    syncUrl(); render();
+  }));
+
+  DB.works().then((data) => { works = data; render(); });
+  </script>
+</body>
+</html>

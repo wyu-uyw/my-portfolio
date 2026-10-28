@@ -210,7 +210,7 @@
     <span class="sw"><i style="background:#fcad03"></i>포인트 옐로 <code>#fcad03</code></span>
   </div>
   파란 바탕에 흰 글자, 줄을 끝까지 당겼을 때만 노란색으로 바뀌는 피드백. 폰트는 Pretendard.</li>
-<li><strong>메뉴 구성</strong> — ABOUT(나는 누구인가) / WORK(작업물) / CONTACT(연락하기). 천장에 매달린 줄 끝의 세로 글자로 표시하고, 줄을 당겼다 놓으면 열린다.</li>
+<li><strong>메뉴 구성</strong> — WORK(작업물) / JOURNAL(작업 일지) / ABOUT(나는 누구인가) / CONTACT(연락하기). 천장에 매달린 줄 끝의 세로 글자로 표시하고, 줄을 당겼다 놓으면 열린다.</li>
 <li><strong>참고 사이트</strong> — Day4에서 고른 스타일 <span class="tag">미정</span></li>
 </ul>
 
@@ -228,20 +228,32 @@
 </ol>
 
 <h2>05. 필요한 화면</h2>
-<p>총 <strong>5개</strong>.</p>
+<p>총 <strong>7개</strong> — 메인 1 + 하위 페이지 6.</p>
+<h3>사이트 지도</h3>
+<pre><code>메인 ─ 줄 메뉴 4개 · 유리구슬 · 자수 방명록
+├─ Work ─ 섹션(All/Projects/Swatch) · 기법 태그(Weave/Print/Stitch/Dye)
+│   └─ Work 상세 ─ 대표 이미지 · 개요 · 컨셉 · 소재 · 과정 · 갤러리 · 이전/다음
+├─ Journal ─ 카테고리(Making/Research/Exhibition/Note) · 최신순 목록
+│   └─ Journal 글 ─ 본문 · 관련 작업 · 이전/다음
+├─ About ─ 프로필 · 소개 · 이력 타임라인 · Skills &amp; Tools · CV
+└─ Contact ─ 이메일 복사 · SNS · 문의 폼 · 현재 상태</code></pre>
 <div class="table-wrap">
 <table>
 <thead><tr><th>화면</th><th>담당 기능</th><th>상태</th></tr></thead>
 <tbody>
-<tr><td>메인 (인덱스)</td><td>줄 당기기 메뉴 + 유리구슬 (기능 1)</td><td>구현 완료</td></tr>
-<tr><td>ABOUT</td><td>소개 (기능 3)</td><td>준비 중</td></tr>
-<tr><td>WORK 목록</td><td>작업물 카드 모아보기 (기능 2, 5)</td><td>준비 중</td></tr>
-<tr><td>WORK 상세</td><td>프로젝트 케이스 스터디. 틀 하나를 모든 프로젝트가 공유 (기능 2)</td><td>준비 중</td></tr>
-<tr><td>CONTACT</td><td>연락처·링크 (기능 3)</td><td>준비 중</td></tr>
+<tr><td>메인 (인덱스)</td><td>줄 당기기 메뉴 + 유리구슬 + 자수 방명록 (기능 1)</td><td>구현 완료</td></tr>
+<tr><td>Work 목록</td><td>작업물 카드 · 필터 (기능 2, 5)</td><td>틀 완성 · 예시 데이터</td></tr>
+<tr><td>Work 상세</td><td>작업 케이스 스터디 (기능 2)</td><td>틀 완성 · 예시 데이터</td></tr>
+<tr><td>Journal 목록</td><td>작업 일지 모아보기</td><td>틀 완성 · 예시 데이터</td></tr>
+<tr><td>Journal 글</td><td>일지 본문 · 관련 작업 연결</td><td>틀 완성 · 예시 데이터</td></tr>
+<tr><td>About</td><td>소개 · 이력 (기능 3)</td><td>틀 완성 · 예시 데이터</td></tr>
+<tr><td>Contact</td><td>연락처 · 문의 폼 (기능 3)</td><td>틀 완성 · 저장 연결 전</td></tr>
 </tbody>
 </table>
 </div>
-<p>기능 4(업로드)는 사이트에 화면을 따로 두지 않고 Supabase 관리 화면을 쓴다.</p>
+<p><strong>공통</strong> — 파란 배경 · 흰 글자 · + 격자 / 좌상단 메인으로 · 우상단 메뉴 · 하단 연락처 / 줄 끊김 → 페이드 전환.</p>
+<p><strong>데이터</strong> — 작업·글·이력·문의·자수는 Supabase 테이블, 이미지는 Storage. 코드 수정 없이 내용 추가.</p>
+<p><strong>제작 순서</strong> — 공통 레이아웃 → Work → About → Contact → Journal.</p>
 
 <h2>06. 얻고 싶은 것</h2>
 <p>졸업 전시를 계기로, 졸업 뒤에도 작업을 올릴 때마다 자라나는 나만의 포트폴리오를 갖고 싶다. 링크 하나로 내가 어떤 작업자인지 보여주고, 사이트 자체로 인터랙션을 직접 만드는 역량까지 증명하고 싶다.</p>
