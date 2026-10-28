@@ -278,7 +278,7 @@
   </div>
   메인은 우측 상단, 하위 페이지는 푸터에 버튼이 있고, 고른 배색은 브라우저에 기억되어 모든 페이지에 이어진다. 포인트 옐로는 두 배색 모두 그대로 쓰고, 반전 배색에서는 메인 이름 외곽선만 흰색으로 바꾼다.</li>
 <li><strong>메뉴 구성</strong> — WORK(컬렉션·스와치) / JOURNAL(작업 일지) / ABOUT(Bio·Statement·CV) / CONTACT(연락하기). 천장에 매달린 줄 끝의 세로 글자로 표시하고, 줄을 당겼다 놓으면 열린다.</li>
-<li><strong>회전 레버 → 사이트맵</strong> — 메인 왼쪽 세로 중앙에 흰 직선 하나로 된 레버. 돌리면 화면이 레버 끝을 축으로 함께 돌면서 뒷면의 사이트맵이 올라온다. 상단의 PORTFOLIO 글자와 White/Blue · plan-draft 버튼은 제자리에 남는다.</li>
+<li><strong>회전 레버 → 사이트맵</strong> — 메인 왼쪽 세로 중앙에 흰 직선 하나로 된 레버. 일정 각도 이상 돌리면 '탁' 넘어가면서 화면이 레버 끝을 축으로 함께 돌고, 뒷면의 사이트맵이 올라온다. 중간에 멈춰 둘 수 없다. 상단의 PORTFOLIO 글자와 White/Blue · plan-draft 버튼은 제자리에 남는다.</li>
 <li><strong>참고 사이트</strong> — Day4에서 고른 스타일 <span class="tag">미정</span></li>
 </ul>
 
@@ -339,13 +339,14 @@
 <table>
 <thead><tr><th>기능</th><th>하는 일</th><th>상태</th></tr></thead>
 <tbody>
-<tr><td>회전 레버</td><td>왼쪽 세로 중앙의 흰 직선. 아래쪽 끝을 축으로 12시 → 3시 → 6시 반원으로 돌아감. 묵직하게 살짝 늦게 따라오고, 놓으면 그 자리에 머묾</td><td><span class="st ok">작동</span></td></tr>
-<tr><td>사용법 힌트</td><td>돌아갈 방향을 가리키는 옅은 곡선 화살표 + 궤적 점 3개 (0° · 90° · 180°)</td><td><span class="st ok">작동</span></td></tr>
-<tr><td>화면 회전</td><td>레버를 돌리는 만큼 화면(배경 · 줄 · 구슬 · 자수 · 작가 소개)이 레버 끝을 축으로 함께 돎. 상단 PORTFOLIO · White/Blue · plan-draft는 제자리</td><td><span class="st ok">작동</span></td></tr>
+<tr><td>회전 레버</td><td>왼쪽 세로 중앙의 흰 직선. 아래쪽 끝을 축으로 12시 → 6시 반원으로 돌아감. 메인(12시)과 사이트맵(6시) 두 자리에만 머무는 스위치</td><td><span class="st ok">작동</span></td></tr>
+<tr><td>탁 넘어가기</td><td>60° 넘게 돌리면 손을 떼지 않아도 자동으로 끝까지 '탁' 넘어가고, 그 전에 놓으면 되돌아감. 화면을 중간에 멈춰 둘 수 없음</td><td><span class="st ok">작동</span></td></tr>
+<tr><td>사용법 힌트</td><td>돌릴 방향을 가리키는 옅은 곡선 화살표 (메인에선 시계 방향, 사이트맵에선 반대) + 궤적 점 3개</td><td><span class="st ok">작동</span></td></tr>
+<tr><td>화면 회전</td><td>레버를 돌리는 만큼 화면(배경 · 줄 · 구슬 · 자수 · 작가 소개)이 레버 끝을 축으로 함께 돎. + 격자 배경은 원래 화면 밖이던 곳까지 이어짐. 상단 PORTFOLIO · White/Blue · plan-draft는 제자리</td><td><span class="st ok">작동</span></td></tr>
 <tr><td>사이트맵 면</td><td>끝까지 돌리면 뒷면의 사이트맵이 똑바로 섬. Work · Journal · About · Contact와 하위 항목 링크</td><td><span class="st ok">작동</span></td></tr>
-<tr><td>조작 잠금</td><td>화면이 돌아간 동안에는 줄 · 구슬을 잡을 수 없고, 사이트맵 링크는 거의 다 돌았을 때만 눌림</td><td><span class="st ok">작동</span></td></tr>
-<tr><td>값 기억</td><td>레버 위치를 브라우저에 저장해 다시 열면 그대로 (사이트맵을 연 채 나가면 사이트맵으로 시작)</td><td><span class="st ok">작동</span></td></tr>
-<tr><td>키보드</td><td>레버에 포커스 후 ←/↓ · →/↑로 조금씩, Home/End로 끝까지</td><td><span class="st ok">작동</span></td></tr>
+<tr><td>조작 잠금</td><td>돌아가는 동안에는 줄 · 구슬을 잡을 수 없고, 사이트맵 링크는 다 넘어갔을 때만 눌림</td><td><span class="st ok">작동</span></td></tr>
+<tr><td>값 기억</td><td>레버 자리(메인/사이트맵)를 브라우저에 저장해 다시 열면 그대로 (사이트맵을 연 채 나가면 사이트맵으로 시작)</td><td><span class="st ok">작동</span></td></tr>
+<tr><td>키보드</td><td>레버에 포커스 후 →/↑ 사이트맵, ←/↓ 메인, Enter/Space 전환</td><td><span class="st ok">작동</span></td></tr>
 </tbody>
 </table>
 </div>

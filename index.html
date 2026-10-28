@@ -61,15 +61,30 @@
   }
 
   /* ---------- 배경: 단색 + 약한 비네팅 + + 패턴 ---------- */
+  /* 바탕색 + 약한 비네팅: 돌지 않는 화면 고정 층 (회전판이 돌아도 화면 가장자리 그늘은 그대로) */
+  body {
+    background:
+      radial-gradient(ellipse 120% 100% at 50% 45%, transparent 55%, color-mix(in srgb, var(--bg-dark) 70%, transparent) 100%),
+      var(--bg);
+  }
   #bg {
     position: fixed;
     inset: 0;
     z-index: 0;
     overflow: hidden;
     pointer-events: none;
-    background:
-      radial-gradient(ellipse 120% 100% at 50% 45%, transparent 55%, color-mix(in srgb, var(--bg-dark) 70%, transparent) 100%),
-      var(--bg);
+  }
+  /* + 격자: 회전판 안에서 함께 도는 넉넉한 층. 레버 피벗에서 가장 먼 화면 모서리까지를 반지름으로 덮어,
+     어느 각도로 돌아도 화면 밖에서 들어오는 부분에 + 가 이어진다. 크기·격자 위치는 JS(sizeField)가 맞춘다. */
+  #field {
+    position: absolute;
+    z-index: -2;
+    pointer-events: none;
+    background: var(--plus-dim);
+    -webkit-mask-image: var(--plus-tile);
+    mask-image: var(--plus-tile);
+    -webkit-mask-size: var(--grid) var(--grid);
+    mask-size: var(--grid) var(--grid);
   }
   .plus,
   #plus-glow,
@@ -286,13 +301,13 @@
     align-items: center;
     padding: 96px 24px 64px calc(var(--lever-zone, 155px) + 8px);
     overflow: hidden;
-    background:
-      radial-gradient(ellipse 120% 100% at 50% 45%, transparent 55%, color-mix(in srgb, var(--bg-dark) 70%, transparent) 100%),
-      var(--bg);
     color: var(--text);
   }
   #world.flip #sitemap { z-index: 3; }               /* 절반 넘게 돌면 사이트맵이 위로 */
-  #sitemap .plus { z-index: 0; }
+  /* 두 면이 + 격자를 함께 쓰느라 투명하므로, 돌아가는 동안 메인 내용은 후반에 사라지고 사이트맵 내용은 전반에 나타난다.
+     (#stage 전체가 아니라 요소마다 투명도를 줘서 유리 구슬의 backdrop-filter가 깨지지 않게) */
+  #bg, .corner.bl, #ropes, #letters, #glass { opacity: var(--main-a, 1); }
+  .sm-inner { opacity: var(--map-a, 0); }
   .sm-inner { position: relative; max-width: 1040px; }
   .sm-kicker { margin: 0 0 28px; font-size: 12px; font-weight: 500; letter-spacing: 0.24em; color: var(--accent); }
   .sm-cols { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 32px 40px; }
@@ -404,8 +419,8 @@
   </nav>
 
   <div id="world">
+  <div id="field" aria-hidden="true"></div>
   <div id="bg" aria-hidden="true">
-    <div class="plus dim"></div>
     <canvas id="plus-glow"></canvas>
     <canvas id="stitches"></canvas>
   </div>
@@ -425,7 +440,6 @@
   </div>
 
   <nav id="sitemap" aria-label="사이트맵" aria-hidden="true" inert>
-    <div class="plus dim" aria-hidden="true"></div>
     <div class="sm-inner">
       <p class="sm-kicker">SITEMAP</p>
       <div class="sm-cols">
@@ -985,6 +999,22 @@
   // 셀 (col,row)의 + 중심 = origin + (col,row) × grid. 화면 중앙이 (0,0), 픽셀 중앙(+0.5) 정렬.
   const origin = { x: 0, y: 0 };
 
+  // 회전판의 + 격자 층: 피벗을 중심으로, 피벗에서 가장 먼 화면 모서리까지를 반지름으로 하는 정사각형.
+  // 격자는 화면 중앙 셀 (0,0) 기준 그대로 (밝아지는 + · 자수와 정확히 겹침).
+  function sizeField() {
+    const fieldEl = document.getElementById("field");
+    const px = leverPivotX(), py = Math.round(H / 2);
+    const r = Math.ceil(Math.hypot(Math.max(px, W - px), Math.max(py, H - py))) + grid;
+    const left = px - r, top = py - r;
+    fieldEl.style.left = left + "px";
+    fieldEl.style.top = top + "px";
+    fieldEl.style.width = fieldEl.style.height = r * 2 + "px";
+    // 타일 안 + 중심이 (grid/2 + 0.5)이므로, 타일 왼쪽 위가 origin - grid/2 - 0.5 에 오도록 (층 기준 좌표)
+    const mod = (v) => ((v % grid) + grid) % grid;
+    const pos = `${mod(origin.x - grid / 2 - 0.5 - left)}px ${mod(origin.y - grid / 2 - 0.5 - top)}px`;
+    fieldEl.style.maskPosition = fieldEl.style.webkitMaskPosition = pos;
+  }
+
   function sizeCanvas() {
     dpr = Math.min(2, window.devicePixelRatio || 1);
     canvas.width = Math.round(W * dpr);
@@ -1004,6 +1034,7 @@
     const root = document.documentElement.style;
     root.setProperty("--grid-ox", origin.x - grid / 2 - 0.5 + "px");
     root.setProperty("--grid-oy", origin.y - grid / 2 - 0.5 + "px");
+    sizeField();
   }
 
   function drawRopes() {
@@ -1405,14 +1436,18 @@
   // ------------------------------------------------------------------
   const LEVER = {
     hit: 96,            // 피벗 반경 안 어디를 잡아도 드래그 (얇은 선 대신)
-    follow: 0.25,       // 포인터 각도를 lerp로 따라가 묵직하게
-    step: 5,            // 키보드 한 번에 5 (0~100 기준)
+    follow: 0.25,       // 드래그 중 포인터 각도를 lerp로 따라가 묵직하게
+    snap: 60,           // 쉬는 자리에서 이 각도만큼 돌리면 자동으로 반대편 끝까지 '탁' 넘어감
+    spring: 0.09,       // 넘어가거나 되돌아갈 때 스프링 세기
+    damping: 0.78,      // 스프링 감쇠
+    bounce: 0.3,        // 끝(0° / 180°)에 부딪혀 살짝 튕기는 정도
     storageKey: "lever",
   };
   const leverEl = document.getElementById("lever");
   const leverLine = leverEl.querySelector(".lv-line");
   const leverMQ = window.matchMedia("(max-width: 640px)");
-  const lever = { target: 0, angle: 0, dragging: false, raf: 0 };
+  // rest: 지금 쉬고 있는 끝 (0 = 메인, 180 = 사이트맵). 레버는 이 두 자리에만 머문다.
+  const lever = { rest: 0, target: 0, angle: 0, velocity: 0, dragging: false, pointerId: null, raf: 0 };
 
   // 데스크톱: 왼쪽 48px + 길이 77px + 여백 → 155px, 모바일: 24px + 58px + 여백 → 106px 를 줄 고정점이 피한다
   function leverZone() {
@@ -1420,6 +1455,9 @@
   }
   function leverLength() {
     return leverMQ.matches ? 58 : 77;
+  }
+  function leverPivotX() {
+    return leverMQ.matches ? 24 : 48;
   }
 
   // 레버 값 → 화면 회전판. 메인 면이 레버 피벗을 축으로 value × 180° 돌고, 180°에서 사이트맵 면이 똑바로 선다.
@@ -1430,6 +1468,9 @@
     worldEl.style.transform = value > 0 ? `rotate(${(value * 180).toFixed(2)}deg)` : "";
     worldEl.classList.toggle("turned", value > 0.01);     // 조금이라도 돌면 메인 조작 막기
     worldEl.classList.toggle("flip", value >= 0.5);       // 절반 넘으면 사이트맵 면이 위
+    const ease = (a, b) => { const t = Math.min(1, Math.max(0, (value - a) / (b - a))); return t * t * (3 - 2 * t); };
+    worldEl.style.setProperty("--main-a", (1 - ease(0.55, 0.85)).toFixed(3));
+    worldEl.style.setProperty("--map-a", ease(0.15, 0.45).toFixed(3));
     const open = value > 0.97;                            // 거의 다 돌았을 때만 사이트맵 링크 사용
     sitemapEl.inert = !open;
     sitemapEl.setAttribute("aria-hidden", String(!open));
@@ -1447,20 +1488,22 @@
     drawLeverArrow(len);
   }
 
-  // 선 끝 바깥쪽 궤도에, 지금 각도에서 앞으로 돌아갈 방향(시계 방향)을 가리키는 곡선 화살표.
-  // 끝(180°)에 가까워 남은 회전이 짧으면 숨긴다.
+  // 선 끝 바깥쪽 궤도에, 쉬는 자리의 반대편으로 돌릴 방향을 가리키는 곡선 화살표.
+  // 메인(0°)에서는 시계 방향, 사이트맵(180°)에서는 반시계 방향. 남은 회전이 짧으면 숨긴다.
   function drawLeverArrow(len) {
     const arrow = leverEl.querySelector(".lv-arrow");
     const R = len + 10;
-    const a1 = lever.angle + 16, a2 = Math.min(178, lever.angle + 62);
-    if (a2 - a1 < 12) { arrow.setAttribute("d", ""); return; }
-    const pt = (deg, r = R) => {
+    const dirSign = lever.rest === 0 ? 1 : -1;
+    const a1 = lever.angle + 16 * dirSign;
+    const a2 = dirSign > 0 ? Math.min(178, lever.angle + 62) : Math.max(2, lever.angle - 62);
+    if ((a2 - a1) * dirSign < 12) { arrow.setAttribute("d", ""); return; }
+    const pt = (deg) => {
       const t = (deg * Math.PI) / 180;
-      return [Math.sin(t) * r, -Math.cos(t) * r];
+      return [Math.sin(t) * R, -Math.cos(t) * R];
     };
     const [x1, y1] = pt(a1), [x2, y2] = pt(a2);
     // 화살촉: 끝점의 진행 방향(접선)을 기준으로 ±28° 뒤로 6px
-    const t = (a2 * Math.PI) / 180, dir = [Math.cos(t), Math.sin(t)];
+    const t = (a2 * Math.PI) / 180, dir = [Math.cos(t) * dirSign, Math.sin(t) * dirSign];
     const head = (s) => {
       const c = Math.cos(s), n = Math.sin(s);
       return [x2 - 6 * (dir[0] * c - dir[1] * n), y2 - 6 * (dir[0] * n + dir[1] * c)];
@@ -1468,7 +1511,7 @@
     const [hx1, hy1] = head(0.49), [hx2, hy2] = head(-0.49);
     const f = (v) => v.toFixed(2);
     arrow.setAttribute("d",
-      `M${f(x1)} ${f(y1)} A${R} ${R} 0 0 1 ${f(x2)} ${f(y2)} M${f(hx1)} ${f(hy1)} L${f(x2)} ${f(y2)} L${f(hx2)} ${f(hy2)}`);
+      `M${f(x1)} ${f(y1)} A${R} ${R} 0 0 ${dirSign > 0 ? 1 : 0} ${f(x2)} ${f(y2)} M${f(hx1)} ${f(hy1)} L${f(x2)} ${f(y2)} L${f(hx2)} ${f(hy2)}`);
   }
 
   function setLeverAngle(deg) {
@@ -1479,25 +1522,44 @@
     onLeverChange(value);
   }
 
-  // 목표 각도로 lerp. 도착하면 루프를 멈춘다.
+  // 한 루프로 두 가지 움직임: 드래그 중에는 포인터를 lerp로 따라가고,
+  // 손을 떼거나 넘어갈 때는 스프링으로 끝까지 가서 끝에 '탁' 부딪힌다.
   function animateLever() {
-    cancelAnimationFrame(lever.raf);
     if (reducedMotion) { setLeverAngle(lever.target); return; }
+    if (lever.raf) return;
     const tick = () => {
-      const d = lever.target - lever.angle;
-      if (Math.abs(d) < 0.05) { setLeverAngle(lever.target); lever.raf = 0; return; }
-      setLeverAngle(lever.angle + d * LEVER.follow);
+      let a;
+      if (lever.dragging) {
+        a = lever.angle + (lever.target - lever.angle) * LEVER.follow;
+        lever.velocity = 0;
+      } else {
+        lever.velocity = (lever.velocity + (lever.target - lever.angle) * LEVER.spring) * LEVER.damping;
+        a = lever.angle + lever.velocity;
+        if (a > 180) { a = 180; lever.velocity *= -LEVER.bounce; }
+        if (a < 0) { a = 0; lever.velocity *= -LEVER.bounce; }
+        if (Math.abs(lever.target - a) < 0.05 && Math.abs(lever.velocity) < 0.05) {
+          setLeverAngle(lever.target);
+          lever.raf = 0;
+          return;
+        }
+      }
+      setLeverAngle(a);
       lever.raf = requestAnimationFrame(tick);
     };
     lever.raf = requestAnimationFrame(tick);
   }
 
-  function setLeverTarget(deg, save) {
-    lever.target = Math.max(0, Math.min(180, deg));
-    animateLever();
-    if (save) {
-      try { localStorage.setItem(LEVER.storageKey, String(lever.target / 180)); } catch (_) {}
+  // 끝(0 또는 180)으로 확정: 드래그를 끝내고 그 자리로 '탁' 보낸 뒤 저장
+  function commitLever(end) {
+    if (lever.dragging) {
+      lever.dragging = false;
+      leverEl.classList.remove("dragging");
+      try { leverEl.releasePointerCapture(lever.pointerId); } catch (_) {}
     }
+    lever.rest = end;
+    lever.target = end;
+    animateLever();
+    try { localStorage.setItem(LEVER.storageKey, String(end / 180)); } catch (_) {}
   }
 
   // 피벗 기준 포인터 각도 (12시 = 0°, 시계 방향). 왼쪽 반원은 가까운 끝(0° 또는 180°)으로.
@@ -1510,36 +1572,41 @@
     return deg > -90 ? 0 : 180;
   }
 
+  // 드래그 각도를 쉬는 자리 기준으로 제한하고, snap 각도를 넘으면 바로 반대편으로 넘긴다
+  function dragLeverTo(deg) {
+    if (lever.rest === 0 && deg >= LEVER.snap) return commitLever(180);
+    if (lever.rest === 180 && deg <= 180 - LEVER.snap) return commitLever(0);
+    lever.target = deg;
+    animateLever();
+  }
+
   leverEl.addEventListener("pointerdown", (e) => {
     lever.dragging = true;
+    lever.pointerId = e.pointerId;
     leverEl.classList.add("dragging");
     leverEl.setPointerCapture(e.pointerId);
     leverEl.focus({ preventScroll: true });
-    setLeverTarget(pointerAngle(e), false);
+    // 레버는 지금 각도에서 포인터 쪽으로 lerp로 따라간다 (snap 각도 너머를 누르면 바로 넘어감)
+    dragLeverTo(pointerAngle(e));
     e.preventDefault();
     e.stopPropagation();
   });
   leverEl.addEventListener("pointermove", (e) => {
-    if (lever.dragging) setLeverTarget(pointerAngle(e), false);
+    if (lever.dragging && e.pointerId === lever.pointerId) dragLeverTo(pointerAngle(e));
   });
-  function releaseLever() {
-    if (!lever.dragging) return;
-    lever.dragging = false;
-    leverEl.classList.remove("dragging");
-    setLeverTarget(lever.target, true);       // 놓은 자리에 머물고 저장
+  // snap 각도 전에 놓으면 쉬던 자리로 되돌아간다 (중간에 멈출 수 없음)
+  function releaseLever(e) {
+    if (!lever.dragging || e.pointerId !== lever.pointerId) return;
+    commitLever(lever.rest);
   }
   leverEl.addEventListener("pointerup", releaseLever);
   leverEl.addEventListener("pointercancel", releaseLever);
 
+  // 키보드: 두 자리 사이를 오가는 스위치. →/↑/End = 사이트맵, ←/↓/Home = 메인, Enter/Space = 전환
   leverEl.addEventListener("keydown", (e) => {
-    const stepDeg = (LEVER.step / 100) * 180;
-    const keys = {
-      ArrowLeft: -stepDeg, ArrowDown: -stepDeg,
-      ArrowRight: stepDeg, ArrowUp: stepDeg,
-    };
-    if (e.key in keys) setLeverTarget(lever.target + keys[e.key], true);
-    else if (e.key === "Home") setLeverTarget(0, true);
-    else if (e.key === "End") setLeverTarget(180, true);
+    if (["ArrowRight", "ArrowUp", "End"].includes(e.key)) commitLever(180);
+    else if (["ArrowLeft", "ArrowDown", "Home"].includes(e.key)) commitLever(0);
+    else if (e.key === "Enter" || e.key === " ") commitLever(lever.rest === 0 ? 180 : 0);
     else return;
     e.preventDefault();
   });
@@ -1556,7 +1623,7 @@
   (() => {
     let saved = 0;
     try { saved = parseFloat(localStorage.getItem(LEVER.storageKey)) || 0; } catch (_) {}
-    lever.target = Math.max(0, Math.min(1, saved)) * 180;
+    lever.rest = lever.target = saved >= 0.5 ? 180 : 0;   // 예전의 중간값도 가까운 끝으로
     setLeverAngle(lever.target);
   })();
   leverMQ.addEventListener("change", drawLever);
