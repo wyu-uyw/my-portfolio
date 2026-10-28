@@ -7,6 +7,10 @@
 <meta name="description" content="Portfolio">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
+<script>
+  // 저장된 배색을 그리기 전에 적용 (깜빡임 방지)
+  try { if (localStorage.getItem("theme") === "inverse") document.documentElement.dataset.theme = "inverse"; } catch (_) {}
+</script>
 <style>
   :root {
     --bg: #0356fc;
@@ -20,11 +24,27 @@
     --glass-border: rgba(255, 255, 255, 0.6);
     --accent: #fcad03;                        /* 당김 임계값 피드백 */
     --overlay-bg: rgba(3, 86, 252, 0.78);
+    --glass-shadow: color-mix(in srgb, var(--bg-dark) 45%, transparent);
     --font: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
 
     /* + 패턴 타일 (선 2개, 픽셀 중앙 정렬로 선명하게). 모든 화면에서 24px (자수 격자와 공유) */
     --grid: 24px;
     --plus-tile: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Cpath d='M12.5 9v7M9 12.5h7' stroke='%23000' stroke-width='1'/%3E%3C/svg%3E");
+  }
+  /* 반전 배색: 흰 배경 + 파란 글자 (우측 상단 버튼으로 전환) */
+  :root[data-theme="inverse"] {
+    --bg: #ffffff;
+    --bg-dark: #d9e3fb;
+    --text: #0356fc;
+    --text-soft: rgba(3, 86, 252, 0.72);
+    --rope: rgba(3, 86, 252, 0.5);
+    --plus-dim: rgba(3, 86, 252, 0.14);
+    --plus-bright: rgba(3, 86, 252, 0.95);
+    --glass-tint: rgba(3, 86, 252, 0.05);
+    --glass-border: rgba(3, 86, 252, 0.45);
+    --overlay-bg: rgba(255, 255, 255, 0.82);
+    --glass-shadow: rgba(3, 56, 168, 0.28);
+    --name-stroke: #ffffff;                   /* 메인 이름 외곽선: 반전 배색에서는 흰색 */
   }
 
   * { box-sizing: border-box; }
@@ -97,7 +117,7 @@
     margin: 6px 0 10px !important;
     color: var(--text);
     /* 노랑 얇은 외곽선 — stroke를 글자 뒤에 칠해 바깥쪽 절반만 보이게 */
-    -webkit-text-stroke: 1.5px var(--accent);
+    -webkit-text-stroke: 1.5px var(--name-stroke, var(--accent));
     paint-order: stroke fill;
   }
   .p-meta { font-size: 15px; line-height: 1.7; color: var(--accent); }
@@ -106,12 +126,18 @@
     .profile { display: none; }
   }
 
-  /* 임시: 기획서 페이지 링크 */
-  .draft-btn {
+  /* 우측 상단: 배색 전환 + 임시 기획서 링크 */
+  .top-actions {
     position: fixed;
     top: 14px;
     right: 16px;
     z-index: 5;
+    display: flex;
+    gap: 8px;
+  }
+  .draft-btn {
+    font: inherit;
+    cursor: pointer;
     padding: 7px 14px;
     border: 1px solid var(--glass-border);
     border-radius: 999px;
@@ -176,7 +202,7 @@
       inset 0 10px 18px -10px rgba(255, 255, 255, 0.95),
       inset 0 -14px 24px -14px rgba(255, 255, 255, 0.45),
       inset 0 0 26px rgba(255, 255, 255, 0.08),
-      0 24px 44px -18px color-mix(in srgb, var(--bg-dark) 45%, transparent);
+      0 24px 44px -18px var(--glass-shadow);
     transition: box-shadow 0.2s;
   }
   /* 굴절 지원 시: 블러를 약하게 두어 + 패턴이 흐려지지 않고 휘어 보이게 */
@@ -202,7 +228,7 @@
       inset 0 10px 18px -10px rgba(255, 255, 255, 1),
       inset 0 -14px 24px -14px rgba(255, 255, 255, 0.55),
       inset 0 0 30px rgba(255, 255, 255, 0.14),
-      0 30px 54px -18px color-mix(in srgb, var(--bg-dark) 55%, transparent);
+      0 30px 54px -18px var(--glass-shadow);
   }
 
   /* ---------- 하위 페이지로 넘어갈 때 덮는 페이드 ---------- */
@@ -303,7 +329,10 @@
     <canvas id="stitches"></canvas>
   </div>
   <div class="corner tl" aria-hidden="true">PORTFOLIO</div>
-  <a class="draft-btn" href="plan-draft.html">plan-draft</a>
+  <div class="top-actions">
+    <button class="draft-btn" id="theme-btn" type="button" aria-pressed="false">White</button>
+    <a class="draft-btn" href="plan-draft.html">plan-draft</a>
+  </div>
   <footer class="corner bl">
     <div class="profile">
       <p class="p-role">INTERACTION DESIGNER · FRONT-END</p>
@@ -389,6 +418,30 @@
   const glassEl = document.getElementById("glass");
   const overlay = document.getElementById("overlay");
   const pageFade = document.getElementById("page-fade");
+
+  // 배색 전환 (파란 배경 ↔ 흰 배경). 하위 페이지와 같은 localStorage 키를 쓴다.
+  const themeBtn = document.getElementById("theme-btn");
+  function syncThemeBtn() {
+    const inverse = document.documentElement.dataset.theme === "inverse";
+    themeBtn.textContent = inverse ? "Blue" : "White";
+    themeBtn.setAttribute("aria-pressed", String(inverse));
+    themeBtn.setAttribute("aria-label", inverse ? "파란 배경으로 보기" : "흰 배경으로 보기");
+  }
+  themeBtn.addEventListener("click", () => {
+    const root = document.documentElement;
+    const inverse = root.dataset.theme !== "inverse";
+    if (inverse) root.dataset.theme = "inverse";
+    else delete root.dataset.theme;
+    try { localStorage.setItem("theme", inverse ? "inverse" : "default"); } catch (_) {}
+    syncThemeBtn();
+    // 캔버스(줄·+ 밝아짐·자수)는 색을 읽어 그리므로 다시 그린다
+    if (ball) {
+      sizeCanvas();
+      stitchResize();
+      renderOnce();
+    }
+  });
+  syncThemeBtn();
   // 뒤로가기(bfcache)로 돌아왔을 때 덮개 해제
   window.addEventListener("pageshow", (e) => { if (e.persisted) pageFade.classList.remove("on"); });
 

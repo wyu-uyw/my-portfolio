@@ -59,8 +59,32 @@ function renderChrome() {
       <a href="mailto:${esc(SITE.email)}">${esc(SITE.email)}</a>
       <a href="${esc(SITE.instagram)}" target="_blank" rel="noopener">${esc(SITE.instagramLabel)}</a>
     </div>
-    <div>© ${esc(SITE.name)} ${new Date().getFullYear()}</div>`;
+    <div class="end">
+      <button class="theme-btn" type="button" data-theme-toggle></button>
+      <span>© ${esc(SITE.name)} ${new Date().getFullYear()}</span>
+    </div>`;
   document.body.append(footer);
+  setupThemeToggle(footer.querySelector("[data-theme-toggle]"));
+}
+
+// 배색 전환 (파란 배경 ↔ 흰 배경). 메인과 같은 localStorage 키를 쓴다.
+// 저장된 배색은 각 페이지 <head>의 한 줄 스크립트가 그리기 전에 먼저 적용한다.
+function setupThemeToggle(btn) {
+  const root = document.documentElement;
+  const sync = () => {
+    const inverse = root.dataset.theme === "inverse";
+    btn.textContent = inverse ? "Blue" : "White";
+    btn.setAttribute("aria-pressed", String(inverse));
+    btn.setAttribute("aria-label", inverse ? "파란 배경으로 보기" : "흰 배경으로 보기");
+  };
+  btn.addEventListener("click", () => {
+    const inverse = root.dataset.theme !== "inverse";
+    if (inverse) root.dataset.theme = "inverse";
+    else delete root.dataset.theme;
+    try { localStorage.setItem("theme", inverse ? "inverse" : "default"); } catch (_) {}
+    sync();
+  });
+  sync();
 }
 
 // + 격자를 메인과 같이 화면 중앙 기준으로 정렬
