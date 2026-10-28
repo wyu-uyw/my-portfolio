@@ -268,112 +268,164 @@ const CONFIG = {
 - [ ] 스티치와 겹쳐도 메인 화면 텍스트가 읽힌다 (자수 불투명도 최대 80%)
 - [ ] 기존 기능이 전부 그대로 동작한다
 
-## 11. 하위 페이지 (사이트 지도)
+## 11. 하위 페이지 (사이트 지도 v2)
+> 사이트 지도 수정 지침서 v2로 이전 사이트 지도를 대체한다.
+
+### 설계 근거 (리서치)
+v2는 아티스트·텍스타일 작가 포트폴리오 리서치를 바탕으로 했다. 지침의 각 항목이 왜 그런지는 아래를 따른다.
+- **업계 표준 구조**: 필수 3페이지 Works · About(Bio/CV) · Contact + 선택 페이지(블로그·뉴스). 이 구조를 따라야 갤러리·컬렉터가 '활동하는 작가'로 읽는다 → Work / Journal / About / Contact.
+- **Works**: 시리즈 단위로 나누는 방식이 일반적, 너무 많은 작품으로 압도하지 않기 → 컬렉션 단위 + 기법 필터, 한 줄 2~3개, 대표 컬렉션 1개 강조.
+- **About**: Bio · Statement · CV 세 덩어리. CV에는 교육·전시·수상과 지원금·언론·**소장처**, 최신순, PDF 제공, 웹 CV에는 전화번호 제외.
+- **Contact**: 별도 페이지와 별개로 모든 페이지 하단에 SNS와 함께 은은하게 노출.
+- **텍스타일**: 손 작업 사진이 공예 역량을 증명 → 제작 과정에 손 작업 필수. 잘 기록된 졸업 작품 하나로도 초기 포트폴리오를 이끈다 → featured 컬렉션. 자수·**패브릭 매니퓰레이션**을 명시하면 차별점 → 기법에 Manipulation 추가, 작품 상세에 기법을 한글로 명시.
+- **도용 위험**: 프린트·패턴은 미공개 작업 보호 영역이 권장됨 → 2차 과제 (클라이언트 비밀번호 금지, Auth/서명 URL).
+- **꾸준한 업데이트**: 오래 변화 없는 사이트는 활동이 없어 보임, 블로그는 검색 노출과 작업 이야기에 도움 → Journal 날짜를 눈에 띄게, 글·작품마다 검색용 설명(meta description) 설정.
+- **형식이 작품을 방해하지 않기**: 웹사이트는 작품의 받침대 → 메인은 인터랙티브, 하위 페이지(특히 작품 상세)는 효과 최소화.
+
+### 변경 요약
+1. About을 Bio / Statement / CV 세 섹션으로 재구성
+2. Work 정리 기준을 '컬렉션(시리즈)' 단위로 변경, 기법은 필터로 유지
+3. Work 상세에 '손 작업(제작 과정) 사진' 섹션 필수화
+4. 모든 페이지 하단에 연락처·SNS 상시 노출
+5. 하위 페이지는 인터랙션 최소화 — 작품 이미지가 주인공
+6. 웹에 노출되는 CV에서 전화번호 제외
+7. 미공개 작업 보호 영역은 2차 과제로 보류
 
 ### 전체 구조
 ```
-/ (index.html) ─ 메인: 줄에 매달린 메뉴 4개 + 리퀴드 글래스 구슬 + 자수 방명록
+/ (index.html) ─ 메인: 줄 메뉴 4개 + 리퀴드 글래스 구슬 + 자수 방명록 (변경 없음)
 │
 ├─ Work (work.html)
-│   ├─ 섹션 필터: All / Projects / Swatch
-│   ├─ 기법 태그 필터: Weave / Print / Stitch / Dye (복수 선택)
-│   └─ 작업 상세 (work-detail.html?id=xxx)
-│       ├─ 대표 이미지
-│       ├─ 개요: 제목, 연도, 분류(Projects/Swatch), 기법 태그
-│       ├─ 컨셉 설명
+│   ├─ 상단 탭: Collections / Swatch
+│   │   ├─ Collections: 컬렉션(시리즈) 카드 목록
+│   │   │   - 카드: 대표 이미지, 컬렉션명, 연도, 한 줄 설명
+│   │   │   - 졸업 작품 등 대표 컬렉션 1개를 맨 위에 크게 고정(featured)
+│   │   └─ Swatch: 원단 샘플·실험 그리드 (작은 정사각 썸네일, 클릭 시 확대 + 정보)
+│   ├─ 기법 필터 (두 탭 공통, 복수 선택): Weave / Print / Stitch / Dye / Manipulation
+│   ├─ 컬렉션 상세 (collection.html?id=xxx)
+│   │   ├─ 컬렉션 소개: 제목, 연도, 컨셉 설명(2~3문단)
+│   │   ├─ 포함된 작품 목록 → 작품 상세로 연결
+│   │   └─ 이전 / 다음 컬렉션
+│   └─ 작품 상세 (work-detail.html?id=xxx)
+│       ├─ 대표 이미지 (큰 사이즈)
+│       ├─ 기본 정보: 제목, 연도, 소속 컬렉션, 기법 태그
 │       ├─ 소재 정보: 섬유 조성, 기법, 크기, 사용 도구
-│       ├─ 과정: 스케치 → 패턴 전개 → 샘플 → 완성 (이미지 + 짧은 설명)
-│       ├─ 완성 이미지 갤러리 (디테일 확대 컷 포함)
-│       └─ 이전 / 다음 작업, 목록으로
+│       ├─ 작업 설명
+│       ├─ 제작 과정 (필수): 스케치 → 패턴 전개 → 샘플 → 제작 중 손 작업 사진
+│       ├─ 완성 이미지 갤러리: 전체 컷 + 질감이 보이는 디테일 확대 컷
+│       └─ 같은 컬렉션의 다른 작품 / 컬렉션으로 돌아가기
 │
 ├─ Journal (journal.html)
 │   ├─ 카테고리 필터: Making / Research / Exhibition / Note
-│   ├─ 글 목록: 날짜, 제목, 카테고리, 썸네일, 한 줄 요약 (최신순)
+│   ├─ 글 목록: 날짜(필수, 눈에 띄게), 제목, 카테고리, 썸네일, 한 줄 요약
 │   └─ 글 상세 (journal-post.html?id=xxx)
 │       ├─ 제목, 날짜, 카테고리
 │       ├─ 본문 (텍스트 + 이미지)
-│       ├─ 관련 작업 링크 (Work 상세로 연결, 선택)
-│       └─ 이전 / 다음 글, 목록으로
+│       ├─ 관련 작품/컬렉션 링크 (선택)
+│       └─ 이전 / 다음 글
 │
-├─ About (about.html)
-│   ├─ 프로필: 사진, 이름, 한 줄 소개
-│   ├─ 소개글: 작업 관심사, 다루는 소재와 기법
-│   ├─ 이력 타임라인 (연도 역순, 항목 추가가 쉬운 구조)
-│   │   ├─ 학력
-│   │   ├─ 전시
-│   │   ├─ 수상
-│   │   └─ 경력 / 활동
-│   ├─ Skills & Tools: 직조, 프린트, 자수, 염색 / 사용 소프트웨어
-│   └─ CV PDF 다운로드
+├─ About (about.html) — 한 페이지 안에 세 섹션, 상단에 섹션 이동 앵커
+│   ├─ Bio: 프로필 사진, 이름, 한 줄 소개 / 짧은 약력 (1문단)
+│   ├─ Statement (작가 노트): 주제, 관심사, 소재를 대하는 태도 (2~3문단, 어려운 이론 나열 금지)
+│   ├─ CV (최신순, 데이터 기반)
+│   │   - Education
+│   │   - Exhibitions (개인전/단체전 표기, 예정 전시는 [upcoming] 표시)
+│   │   - Awards & Grants
+│   │   - Residencies & Activities (워크숍, 협업, 외주 포함)
+│   │   - Press (기사·인터뷰 링크)
+│   │   - Collections (소장처 — 작품을 소장한 기관·개인)
+│   │   - 웹 노출 CV에는 전화번호를 넣지 않는다
+│   └─ CV PDF 다운로드 버튼
 │
 └─ Contact (contact.html)
     ├─ 이메일 (클릭 시 복사 + 메일 앱 열기)
-    ├─ SNS 링크: Instagram 등
-    ├─ 문의 폼: 이름, 이메일, 문의 유형(협업/외주/기타), 내용
-    └─ 현재 상태 한 줄: 예) "협업 문의 가능 / 2027.02 졸업 예정"
+    ├─ SNS 링크
+    ├─ 문의 폼: 이름, 이메일, 문의 유형(협업/외주/전시/기타), 내용
+    └─ 현재 상태 한 줄 (예: "협업 문의 가능")
 ```
 
 ### 파일 구성
 | 파일 | 역할 |
 |---|---|
-| `assets/site.css` | 하위 페이지 공통 스타일 (색 변수, + 격자 배경, 헤더·푸터, 칩·카드·버튼, 이미지 자리) |
-| `assets/site.js` | 공통 동작: `SITE` 설정(이름·이메일·SNS·상태·CV), 헤더/푸터 주입, 격자 중앙 정렬, 페이지 전환, 유틸(`esc`, `param`, `media`, `formatDate`) |
-| `assets/data.js` | 데이터 계층: `DB.*` 함수, 라벨(`LABELS`), 예시 데이터(`SAMPLE`), About 고정 내용(`ABOUT`) |
-| `work.html` · `work-detail.html` | 작업 목록 / 상세 |
+| `assets/site.css` | 하위 페이지 공통 스타일 (색 변수·반전 배색, + 격자, 헤더·푸터, 탭·칩·카드, 이미지 프레임, 라이트박스, CV) |
+| `assets/site.js` | `SITE` 설정(이름·이메일·SNS·상태·CV), 헤더/푸터 주입, `<title>` 형식, 라이트박스, 배색 전환, 유틸(`esc`, `param`, `media`, `zoomable`, `paragraphs`, `formatDate`, `setTitle`) |
+| `assets/data.js` | 데이터 계층 `DB.*`, 라벨 `LABELS`, 예시 데이터 `SAMPLE`, About 고정 내용 `ABOUT` |
+| `supabase/schema.sql` | 테이블 생성 + RLS + Storage 버킷 SQL (SQL Editor에서 직접 실행) |
+| `work.html` · `collection.html` · `work-detail.html` | Work 목록(탭) / 컬렉션 상세 / 작품 상세 |
 | `journal.html` · `journal-post.html` | 저널 목록 / 글 |
-| `about.html` · `contact.html` | 소개 / 연락 |
+| `about.html` · `contact.html` | About(Bio·Statement·CV) / Contact |
 
-- 각 페이지는 `<body data-page="work">`처럼 현재 메뉴를 표시하고, `site.js` → `data.js` 순서로 불러온 뒤 페이지 전용 스크립트를 실행한다.
-- 메인 `index.html`은 지금처럼 단일 파일을 유지한다 (공통 `assets/`를 쓰지 않음).
+- 각 페이지는 `<body data-page="work" data-title="Work">`로 현재 메뉴와 제목을 표시하고, `site.js` → `data.js` 순서로 불러온 뒤 페이지 스크립트를 실행한다.
+- 메인 `index.html`은 단일 파일 그대로 (공통 `assets/`를 쓰지 않음).
 
 ### 공통 요소 (모든 하위 페이지)
-- 디자인 언어 유지: 파란 배경(#0356fc), 흰 글자, Pretendard 300, 미세한 + 격자 배경
-  - + 격자는 메인과 같은 24px 타일, 같은 화면 중앙 기준 (`--grid-ox/oy`). 파란 바탕 흰 글자에 200 굵기는 쓰지 않는다.
-  - 강조(현재 메뉴, 호버, 카테고리, 이력 구분)는 포인트 옐로 `--accent`.
-- 좌측 상단: 메인으로 돌아가기 (메인으로 가면 줄이 다시 매달리는 연출)
-  - `site.js`가 메인으로 가는 링크 클릭 시 `sessionStorage.rehang = "1"`을 남긴다.
-  - 메인은 시작할 때 이 값을 읽고 지운 뒤, 모든 줄을 같은 각도(최대 약 20°, 줄 간격의 80%를 넘지 않게)로 들어 올린 채 시작해 진자처럼 흔들리며 내려오게 한다. 마디 사이 거리는 그대로라 물리 제약이 깨지지 않고, 모든 줄이 같은 방향이라 서로 겹치지 않는다.
-- 우측 상단: 다른 메뉴로 이동하는 작은 텍스트 네비게이션 (Work · Journal · About · Contact). 현재 페이지는 `aria-current="page"` + 노랑 밑줄.
-- 하단: 이메일, Instagram, © 이름 연도
-- 페이지 진입: 메인에서 줄이 끊긴 직후 해당 페이지로 자연스럽게 페이드 전환
-  - 메인: 줄 끊김(0.65초) → 배경색 덮개 페이드인(0.35초) → 이동.
-  - 하위 페이지: 본문이 0.5초 페이드인으로 시작. 사이트 안 링크 이동은 0.28초 페이드아웃 후 이동.
-  - 뒤로가기(bfcache)로 돌아오면 덮개를 해제한다. `prefers-reduced-motion`이면 페이드 없이 바로 이동.
+- 디자인 언어 유지: 배경 #0356fc, 흰 글자, Pretendard 300, 미세한 + 격자 (반전 배색 전환 버튼은 푸터에 유지)
+- 좌측 상단: **이름(로고)** → 클릭 시 메인으로. 메인은 줄이 흔들리며 다시 매달리는 연출로 맞는다 (`sessionStorage.rehang`).
+- 우측 상단: 고정 네비게이션 Work · Journal · About · Contact. 모든 페이지에서 같은 위치·형식, 현재 페이지는 `aria-current="page"` + 노랑 밑줄. 컬렉션·작품 상세는 Work, 글 상세는 Journal로 표시.
+- **하단 푸터 (모든 페이지 필수)**: 이메일, SNS 링크(`SITE.sns` 배열), © 이름 연도
+- `<title>`은 **"페이지명 — 이름"** 형식. 목록 페이지는 HTML에 고정, 상세 페이지는 불러온 뒤 `setTitle(작품명)`으로 "작품명 — 이름".
+
+### 하위 페이지 디자인 원칙
+- 메인의 물리·글래스 효과는 하위 페이지에 넣지 않는다.
+- + 격자 배경은 유지하되 dim 상태로만, 구슬 따라 밝아지는 효과 없음.
+- 작품 이미지 위·주변에 장식 요소를 두지 않는다. 여백을 넉넉하게.
+- 허용되는 인터랙션: 이미지 페이드인, 호버 시 살짝 확대, 라이트박스(이미지 크게 보기).
+  - 페이드인: `<img>`가 불러와지면 0.6초 동안 나타남 (`.media.loaded`).
+  - 호버 확대: 테두리 상자(`.frame`, `.zoom`) 안에서만 1.03배. 상자 밖으로 넘치지 않는다.
+  - 라이트박스: `zoomable()`로 만든 이미지를 누르면 열림. 같은 그룹(대표/과정/갤러리/스와치 등) 안에서 ←/→ 이동, Esc·바깥 클릭·✕로 닫기, 포커스는 라이트박스 안에 가두고 닫으면 원래 자리로.
+  - 그 외 페이지 간 페이드아웃 등은 두지 않는다 (페이지 첫 진입 0.5초 페이드인만 유지 — 메인의 줄 끊김 전환과 이어지게).
+  - `prefers-reduced-motion`이면 페이드·확대 없음.
+- 한 화면에 작품을 너무 많이 나열하지 않는다 (컬렉션 목록은 한 줄 2~3개).
+- 이미지는 웹용으로 최적화 (긴 변 2000px 이하, 1MB 이하 권장, lazy loading). `<img>`는 `loading="lazy" decoding="async"`.
 
 ### 페이지별 구현 메모
-- **Work 목록**: 섹션은 하나만, 기법은 여러 개 선택. 기법은 선택한 것 중 **하나라도** 쓴 작업을 보여준다 (OR). 필터 상태는 주소(`?section=projects&tech=weave,print`)에 남아 공유·새로고침 시 유지된다.
-- **Work 상세**: `?id=`로 찾는다. 이전/다음은 목록 정렬 순서(`sort`) 기준. 과정·갤러리가 비어 있으면 그 섹션을 숨긴다. 기법 태그를 누르면 그 기법으로 거른 목록으로 이동.
-- **Journal**: 최신순(`date` 내림차순). 카테고리 필터는 `?category=`로 유지. 본문은 블록 배열(`{type:"p", text}` / `{type:"img", src, caption}`).
-- **About**: 이력은 구분(학력·전시·수상·경력/활동)별로 묶고, 각 구분 안은 연도 역순. `SITE.cvUrl`이 없으면 CV 버튼은 '준비 중'으로 비활성.
-- **Contact**: 이메일을 누르면 클립보드 복사 후 메일 앱을 연다. 문의 폼은 이름·이메일 형식·내용을 검사한 뒤 `DB.submitInquiry`로 보낸다. 저장소 연결 전에는 작성 내용을 제목·본문에 채운 메일 앱으로 대체한다.
-- **이미지 자리**: 이미지 주소가 없으면 X 스티치 무늬 상자(`.ph`)와 라벨로 표시한다. 데이터에 주소가 들어오면 같은 비율의 `<img>`로 바뀐다.
+- **Work 목록**: 탭(`?tab=swatch`)과 기법 필터(`?tech=weave,dye`)가 주소에 남는다. 기법은 선택한 것 중 하나라도 쓰면 표시(OR).
+  - Collections 탭: 컬렉션 안 작품 중 하나라도 선택한 기법을 쓰면 그 컬렉션을 표시. `is_featured` 컬렉션은 맨 위에 크게(이미지 16:10 + 제목), 나머지는 한 줄 2~3개 카드. 한 줄 설명은 `concept` 첫 문단의 첫 문장.
+  - Swatch 탭: 정사각 썸네일 그리드. 누르면 라이트박스로 확대 + 기법·섬유·크기·메모 표시, 스와치끼리 ←/→.
+  - 탭은 ←/→ 키로도 전환.
+- **컬렉션 상세**: 제목·연도·컨셉(빈 줄로 나뉜 문단) + 대표 이미지, 포함된 작품 카드, 이전/다음 컬렉션(`sort_order` 순).
+- **작품 상세**: 대표 이미지 → 기본 정보(소속 컬렉션 링크, 기법 태그는 Work 필터로 연결) → 소재 정보(기법은 한글) → 작업 설명 → 제작 과정(`process_images`, 단계: sketch/pattern/sample/handwork, 비어 있으면 "준비 중" 문구 — 섹션은 항상 표시) → 갤러리(`detail: true`는 정사각 + DETAIL 표시) → 같은 컬렉션의 다른 작품 → 컬렉션으로 돌아가기 (스와치는 Swatch 탭으로).
+- **Journal**: 날짜를 크게(22px) 맨 앞에. 썸네일은 `images[0]`. 글 본문은 빈 줄로 문단 구분, `[[image:0]]`만 있는 줄은 `images[0]` 자리 — 본문에 쓰지 않은 이미지는 글 끝에 붙는다. 관련 작품·컬렉션 카드는 있을 때만.
+- **SEO**: 작품·컬렉션·글 상세는 불러온 뒤 `setTitle(제목, 설명)`으로 `<title>`과 `meta description`(160자)을 바꾼다. 설명은 작품 설명·컨셉 첫 문단, 글 요약.
+- **About**: 상단 앵커(Bio · Statement · CV, 부드러운 스크롤). Bio·Statement는 `data.js`의 `ABOUT`. CV는 `cv_items`를 섹션별로 묶어 최신순(예정 → 연도 내림차순 → `sort_order`), `note`는 배지(개인전/단체전/워크숍/외주 등), `is_upcoming`은 노랑 [upcoming] 배지, `link`가 있으면 ↗ 링크. 전화번호 필드는 없다.
+- **Contact**: 문의 유형에 '전시' 추가. 저장소 연결 전에는 작성 내용을 채운 메일 앱으로 대체.
 - 데이터를 HTML에 넣을 때는 항상 `esc()`로 이스케이프한다.
 
-### 데이터 관리 (Supabase)
-코드를 고치지 않고 내용을 추가할 수 있도록, 반복해서 늘어나는 데이터는 Supabase 테이블로 관리:
-- `works`: 작업 (분류, 기법 태그, 소재 정보, 이미지 목록, 공개 여부, 정렬 순서)
-- `journal_posts`: 저널 글 (카테고리, 본문, 이미지, 관련 작업 id, 공개 여부)
-- `history`: About 이력 (구분, 연도, 내용, 정렬 순서)
-- `inquiries`: Contact 문의 (insert만 허용, 조회는 대시보드에서 나만)
-- `stitches`: 메인 자수 방명록 (10장 2단계)
-- 이미지는 Supabase Storage 버킷에 저장
+### 데이터 구조 (Supabase)
+```
+collections   : id, title, year, concept, cover_image, is_featured, sort_order, is_public
+works         : id, collection_id(nullable), type('project'|'swatch'), title, year,
+                techniques(text[]), fiber, size, tools, description,
+                cover_image, process_images(jsonb), gallery_images(jsonb),
+                sort_order, is_public
+journal_posts : id, title, date, category, summary, body, images(jsonb),
+                related_work_id, related_collection_id, is_public
+cv_items      : id, section('education'|'exhibition'|'award'|'residency'|'press'|'collection'),
+                year, title, venue, location, note, is_upcoming, link, sort_order
+inquiries     : id, name, email, type, message, created_at
+stitches      : (기존 유지)
+```
+- 공개 테이블은 anon에게 `is_public = true`인 행만 select 허용 (RLS).
+- inquiries는 anon insert만 허용, select 불가.
+- 이미지는 Supabase Storage `portfolio` 버킷(public read)에 저장.
+- 테이블 생성 SQL과 RLS 정책은 `supabase/schema.sql`. Supabase 대시보드 SQL Editor에서 직접 실행한다 (다시 실행해도 안전).
+  - `cv_items`에도 `is_public`(기본 true) 컬럼을 두어 같은 RLS 규칙을 적용했다.
+  - 지침 표 대비 추가: `techniques`에 `manipulation`, `cv_items.section`에 `collection`(소장처). 예전 SQL로 이미 테이블을 만들었어도 다시 실행하면 값 검사 규칙이 새로 바뀐다.
+  - jsonb 모양: `process_images` = `[{step, src, caption}]`, `gallery_images` = `[{src, caption, detail}]`, `images` = `[{src, caption}]`.
+  - 값 검사: `techniques`는 weave/print/stitch/dye/manipulation만, `category`·`section`·`type`·문의 `type`은 정해진 값만, 문의 글자 수 제한.
 
-**현재 상태**: Supabase 연결 전. `assets/data.js`의 `SAMPLE`이 위 테이블과 같은 모양의 **예시 데이터**를 제공한다. 연결 시 `DB.*` 함수 안쪽만 테이블 조회로 바꾸면 페이지 코드는 그대로 쓸 수 있다.
+**현재 상태**: Supabase 연결 전. `assets/data.js`의 `SAMPLE`이 위 테이블과 같은 필드 이름의 **예시 데이터**를 제공한다. 연결 시 `DB.*` 함수 안쪽만 바꾸면 페이지 코드는 그대로 쓸 수 있다.
 
 | `DB` 함수 | 테이블 | 조건 |
 |---|---|---|
-| `DB.works()` / `DB.work(id)` | `works` | `published = true`, `sort` 오름차순 |
-| `DB.posts()` / `DB.post(id)` | `journal_posts` | `published = true`, `date` 내림차순 |
-| `DB.history()` | `history` | `year` 내림차순, 같은 해는 `sort` 오름차순 |
+| `DB.collections()` / `DB.collection(id)` | `collections` | `is_public`, `sort_order` 오름차순 |
+| `DB.works(type?)` / `DB.work(id)` | `works` | `is_public`, `type` 선택, `sort_order` 오름차순 |
+| `DB.worksInCollection(id)` | `works` | `type = 'project'`, `collection_id = id` |
+| `DB.posts()` / `DB.post(id)` | `journal_posts` | `is_public`, `date` 내림차순 |
+| `DB.cv()` | `cv_items` | 예정 먼저 → `year` 내림차순 → `sort_order` |
 | `DB.submitInquiry(data)` | `inquiries` | insert만. 성공 시 `{ ok: true }` |
 
-필드 모양 (예시 데이터 기준):
-- `works`: `id, title, year, section('projects'|'swatch'), techniques[], summary, concept, materials{fiber, technique, size, tools}, cover, process[{step, image, text}], gallery[{src, caption, detail}], published, sort`
-- `journal_posts`: `id, title, date, category, thumbnail, summary, body[], related_work_id, published`
-- `history`: `id, kind('education'|'exhibition'|'award'|'activity'), year, text, sort`
-- `inquiries`: `name, email, type('collab'|'commission'|'etc'), message`
-
-### 메인 메뉴 설정 변경
+### 메인 메뉴 설정
 ```js
 menus: [
   { label: "WORK",    href: "work.html" },
@@ -384,17 +436,24 @@ menus: [
 ```
 
 ### 제작 우선순위
-1. 공통 레이아웃 (헤더, 푸터, 배경) — 모든 하위 페이지가 공유
-2. Work 목록 + 상세 — 포트폴리오의 핵심
-3. About — 이력 타임라인
-4. Contact — 문의 폼
-5. Journal 목록 + 상세
+1. 공통 레이아웃 (헤더, 네비, 푸터, 배경)
+2. Work: 컬렉션 목록 → 컬렉션 상세 → 작품 상세 → Swatch 탭
+3. About: Bio / Statement / CV
+4. Contact: 문의 폼
+5. Journal: 목록 → 상세
+
+### 보류 (2차 과제)
+- 미공개 작업 보호 영역(비밀번호/초대 링크).
+  ※ 클라이언트 JS에만 비밀번호를 두는 방식은 보호가 되지 않으므로, 구현 시 Supabase Auth 또는 서명된 URL(signed URL) 방식으로 설계할 것.
+- 글·작품을 올리는 본인 전용 관리자 페이지.
 
 ### 하위 페이지 확인
-- [ ] 메인에서 줄을 끝까지 당겼다 놓으면 끊긴 뒤 해당 페이지로 페이드 전환된다
-- [ ] 하위 페이지 좌측 상단으로 메인에 돌아가면 줄이 흔들리며 다시 매달린다
-- [ ] 우측 상단 메뉴에 현재 페이지가 표시되고, 다른 메뉴로 이동할 수 있다
-- [ ] Work 필터(섹션 1개 + 기법 여러 개)가 동작하고 주소에 남는다
-- [ ] 상세 페이지의 이전/다음/목록 이동이 동작한다
-- [ ] Contact 이메일 클릭 시 복사 + 메일 앱이 열린다
+- [ ] 모든 페이지 좌측 상단 이름을 누르면 메인으로, 메인 줄이 다시 매달린다
+- [ ] 우측 상단 네비가 모든 페이지에서 같은 위치·형식이고 현재 페이지가 표시된다
+- [ ] 모든 페이지 하단에 이메일·SNS·©가 보인다
+- [ ] 탭 제목이 "페이지명 — 이름" (상세는 "작품명 — 이름")
+- [ ] Work: Collections/Swatch 탭, 기법 필터(두 탭 공통), featured 컬렉션이 맨 위에 크게
+- [ ] Swatch를 누르면 라이트박스로 확대 + 정보, ←/→로 넘김
+- [ ] 작품 상세에 제작 과정(손 작업 포함) 섹션이 항상 있다
+- [ ] About: Bio / Statement / CV 앵커 이동, CV에 전화번호 없음, upcoming 표시
 - [ ] 모바일 폭(390px)에서 가로 스크롤 없이 읽힌다

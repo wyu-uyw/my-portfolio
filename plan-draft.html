@@ -163,6 +163,21 @@
   .doc th, .doc td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid var(--line); }
   .doc th { font-weight: 700; font-size: 13px; color: var(--ink-soft); }
   .doc td:first-child { font-weight: 600; white-space: nowrap; }
+  .st {
+    display: inline-block;
+    padding: 0 8px;
+    font-size: 11.5px;
+    font-weight: 700;
+    line-height: 1.8;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .st.ok { background: #0356fc; color: #fff; }
+  .st.demo { background: #fcad03; color: #151515; }
+  .st.todo { border: 1px solid var(--line); color: var(--ink-soft); }
+  .legend { font-size: 14px; color: var(--ink-soft); display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+  .legend .st { margin-left: 8px; }
+  .legend .st:first-child { margin-left: 0; }
   .swatches { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 8px 0; }
   .sw { display: inline-flex; align-items: center; gap: 8px; font-size: 14.5px; }
   .sw i { width: 22px; height: 22px; border-radius: 6px; border: 1px solid var(--line); flex: none; }
@@ -186,6 +201,52 @@
 
 <h2>01. 기획 배경</h2>
 <p>졸업 전시에서는 작품만 놓여 있어서, 무엇을 왜 만들었고 어떤 과정을 거쳤는지까지 전하기 어렵다. 그 맥락을 웹에서 보충하고, 결과물보다 문제를 바라보고 풀어가는 '작업자'로서의 나를 보여주고 싶다. 졸업 전시를 첫 프로젝트로 시작하지만, 궁극적으로는 새 작업이 생길 때마다 업로드해 작업 이력이 쌓이는 개인 포트폴리오로 계속 쓰려고 한다. 사이트 자체도 줄을 당겨 메뉴를 여는 물리 인터랙션으로 만들어, 첫 화면에서부터 구현 역량이 드러나게 한다.</p>
+
+<h2>01-1. 리서치 — 아티스트 포트폴리오는 어떻게 생겼나</h2>
+<p>일반적인 아티스트 포트폴리오 구성과 텍스타일 작가 사례를 찾아본 결과, 업계에는 갤러리 웹사이트와 비슷한 <strong>표준 구조</strong>가 뚜렷했다. 이 구조를 따르면 갤러리 디렉터·컬렉터가 "전문적으로 활동하는 작가"로 읽는다. 하위 페이지 사이트 지도 v2는 이 리서치를 근거로 만들었다.</p>
+
+<h3>업계 기본 틀</h3>
+<ul>
+<li><strong>필수 3페이지</strong> — Works(작품 선별), About(Bio · Statement · CV), Contact. Contact는 About과 합치기도 한다.</li>
+<li><strong>선택 페이지</strong> — 뉴스·이벤트(예정 전시, 수업 등 작가를 만날 기회), 블로그(검색 노출, 작업을 둘러싼 이야기), 상점.</li>
+<li><strong>Works</strong> — 시간순·매체별·내용별 중 작가에 맞게. 시리즈로 작업하면 시리즈 단위로 나눈다. 너무 많은 작품으로 압도하지 않는다.</li>
+<li><strong>About</strong> — Bio · Statement(작가 노트) · CV. CV에는 교육, 전시, 수상·지원금, 언론, 소장처. 최신순, PDF 제공, 웹 CV에는 전화번호를 뺀다.</li>
+<li><strong>Contact</strong> — 별도 페이지와 별개로 모든 페이지 하단에 SNS와 함께 은은하게.</li>
+</ul>
+
+<h3>텍스타일 분야에서 눈에 띈 점</h3>
+<ul>
+<li>직물을 직접 다루는 <strong>손 작업 사진</strong>이 공예 역량을 증명한다.</li>
+<li>신진 작가는 <strong>잘 기록된 졸업 작품 하나</strong>로도 초기 포트폴리오를 충분히 이끈다.</li>
+<li><strong>자수나 패브릭 매니퓰레이션</strong>을 명시하면 차별점이 된다.</li>
+<li>프린트·패턴은 도용 위험이 있어 <strong>미공개 작업 보호 영역</strong>을 권한다.</li>
+<li><strong>꾸준한 업데이트</strong> — 2년간 변화 없는 사이트는 활동이 없는 것처럼 읽힌다.</li>
+<li>웹사이트는 <strong>작품의 받침대</strong> — 형식이 작품을 방해해선 안 된다.</li>
+</ul>
+
+<h3>리서치 → 이 사이트에 반영</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>리서치</th><th>반영</th><th>상태</th></tr></thead>
+<tbody>
+<tr><td>필수 3 + 블로그</td><td>Work / Journal / About / Contact — 업계 표준과 그대로 맞음</td><td><span class="st ok">반영</span></td></tr>
+<tr><td>시리즈 단위 정리</td><td>Work를 컬렉션(시리즈) 단위로, 기법은 필터로 유지</td><td><span class="st ok">반영</span></td></tr>
+<tr><td>압도하지 않기</td><td>컬렉션 한 줄 2~3개, 대표 컬렉션 1개만 크게</td><td><span class="st ok">반영</span></td></tr>
+<tr><td>Bio · Statement · CV</td><td>About을 세 섹션으로, 작가 노트 따로</td><td><span class="st ok">반영</span></td></tr>
+<tr><td>CV 항목</td><td>Education · Exhibitions · Awards &amp; Grants · Residencies &amp; Activities · Press · <strong>Collections(소장처)</strong>, 최신순, PDF</td><td><span class="st ok">반영</span></td></tr>
+<tr><td>웹 CV 전화번호 제외</td><td>CV에 전화번호 칸 자체가 없음</td><td><span class="st ok">반영</span></td></tr>
+<tr><td>하단 연락처 상시 노출</td><td>모든 하위 페이지 푸터에 이메일 · SNS · ©</td><td><span class="st ok">반영</span></td></tr>
+<tr><td>손 작업 사진</td><td>작품 상세 제작 과정에 손 작업 단계 필수</td><td><span class="st ok">반영</span></td></tr>
+<tr><td>졸업 작품 하나로 시작</td><td>졸업 작품 컬렉션을 Work 맨 위에 고정(featured)</td><td><span class="st ok">반영</span></td></tr>
+<tr><td>자수·매니퓰레이션 명시</td><td>기법 필터에 <strong>Manipulation</strong> 추가, 작품 상세에 기법을 한글로 표시</td><td><span class="st ok">반영</span></td></tr>
+<tr><td>형식이 작품을 방해하지 않기</td><td>메인만 인터랙티브, 하위 페이지는 이미지 페이드인 · 호버 확대 · 라이트박스만</td><td><span class="st ok">반영</span></td></tr>
+<tr><td>블로그 = 검색 노출</td><td>Journal · 작품 · 컬렉션마다 검색용 설명 자동 설정, Journal 날짜를 크게</td><td><span class="st ok">반영</span></td></tr>
+<tr><td>미공개 작업 보호</td><td>2차 과제 — Supabase Auth 또는 서명된 URL로 설계</td><td><span class="st todo">보류</span></td></tr>
+<tr><td>뉴스·이벤트(작가를 만날 기회)</td><td>지금은 CV의 upcoming 표시와 Journal Exhibition 카테고리로 대신함</td><td><span class="st demo">검토</span></td></tr>
+<tr><td>꾸준한 업데이트</td><td>Journal로 활동 기록. 최근 업데이트를 눈에 띄게 보여줄지는 검토</td><td><span class="st demo">검토</span></td></tr>
+</tbody>
+</table>
+</div>
 
 <h2>02. 누가 보나요</h2>
 <div class="table-wrap">
@@ -216,7 +277,7 @@
     <span class="sw"><i style="background:#ffffff"></i>반전 · 흰 배경 + 파란 글자</span>
   </div>
   메인은 우측 상단, 하위 페이지는 푸터에 버튼이 있고, 고른 배색은 브라우저에 기억되어 모든 페이지에 이어진다. 포인트 옐로는 두 배색 모두 그대로 쓰고, 반전 배색에서는 메인 이름 외곽선만 흰색으로 바꾼다.</li>
-<li><strong>메뉴 구성</strong> — WORK(작업물) / JOURNAL(작업 일지) / ABOUT(나는 누구인가) / CONTACT(연락하기). 천장에 매달린 줄 끝의 세로 글자로 표시하고, 줄을 당겼다 놓으면 열린다.</li>
+<li><strong>메뉴 구성</strong> — WORK(컬렉션·스와치) / JOURNAL(작업 일지) / ABOUT(Bio·Statement·CV) / CONTACT(연락하기). 천장에 매달린 줄 끝의 세로 글자로 표시하고, 줄을 당겼다 놓으면 열린다.</li>
 <li><strong>참고 사이트</strong> — Day4에서 고른 스타일 <span class="tag">미정</span></li>
 </ul>
 
@@ -234,32 +295,152 @@
 </ol>
 
 <h2>05. 필요한 화면</h2>
-<p>총 <strong>7개</strong> — 메인 1 + 하위 페이지 6.</p>
+<p>총 <strong>8개</strong> — 메인 1 + 하위 페이지 7. <span class="tag">사이트 지도 v2</span></p>
 <h3>사이트 지도</h3>
-<pre><code>메인 ─ 줄 메뉴 4개 · 유리구슬 · 자수 방명록
-├─ Work ─ 섹션(All/Projects/Swatch) · 기법 태그(Weave/Print/Stitch/Dye)
-│   └─ Work 상세 ─ 대표 이미지 · 개요 · 컨셉 · 소재 · 과정 · 갤러리 · 이전/다음
-├─ Journal ─ 카테고리(Making/Research/Exhibition/Note) · 최신순 목록
-│   └─ Journal 글 ─ 본문 · 관련 작업 · 이전/다음
-├─ About ─ 프로필 · 소개 · 이력 타임라인 · Skills &amp; Tools · CV
-└─ Contact ─ 이메일 복사 · SNS · 문의 폼 · 현재 상태</code></pre>
+<pre><code>메인 ─ 줄 메뉴 4개 · 유리구슬 · 자수 방명록 (변경 없음)
+├─ Work ─ 탭 Collections / Swatch · 기법 필터(Weave/Print/Stitch/Dye/Manipulation)
+│   ├─ 컬렉션 ─ 소개(컨셉 2~3문단) · 포함 작품 · 이전/다음 컬렉션
+│   └─ 작품 ─ 대표 이미지 · 정보 · 소재 · 설명 · 제작 과정(손 작업 필수) · 갤러리
+├─ Journal ─ 카테고리 필터 · 날짜가 눈에 띄는 목록
+│   └─ 글 ─ 본문 · 관련 작품/컬렉션 · 이전/다음
+├─ About ─ Bio · Statement · CV (앵커 이동, 전화번호 제외)
+└─ Contact ─ 이메일 복사 · SNS · 문의 폼(협업/외주/전시/기타) · 현재 상태</code></pre>
 <div class="table-wrap">
 <table>
 <thead><tr><th>화면</th><th>담당 기능</th><th>상태</th></tr></thead>
 <tbody>
 <tr><td>메인 (인덱스)</td><td>줄 당기기 메뉴 + 유리구슬 + 자수 방명록 (기능 1)</td><td>구현 완료</td></tr>
-<tr><td>Work 목록</td><td>작업물 카드 · 필터 (기능 2, 5)</td><td>틀 완성 · 예시 데이터</td></tr>
-<tr><td>Work 상세</td><td>작업 케이스 스터디 (기능 2)</td><td>틀 완성 · 예시 데이터</td></tr>
+<tr><td>Work 목록</td><td>컬렉션 카드 · 스와치 그리드 · 기법 필터 (기능 2, 5)</td><td>틀 완성 · 예시 데이터</td></tr>
+<tr><td>컬렉션 상세</td><td>시리즈 소개와 포함 작품 (기능 2)</td><td>틀 완성 · 예시 데이터</td></tr>
+<tr><td>작품 상세</td><td>작품 케이스 스터디, 손 작업 과정 필수 (기능 2)</td><td>틀 완성 · 예시 데이터</td></tr>
 <tr><td>Journal 목록</td><td>작업 일지 모아보기</td><td>틀 완성 · 예시 데이터</td></tr>
-<tr><td>Journal 글</td><td>일지 본문 · 관련 작업 연결</td><td>틀 완성 · 예시 데이터</td></tr>
-<tr><td>About</td><td>소개 · 이력 (기능 3)</td><td>틀 완성 · 예시 데이터</td></tr>
+<tr><td>Journal 글</td><td>일지 본문 · 관련 작품/컬렉션 연결</td><td>틀 완성 · 예시 데이터</td></tr>
+<tr><td>About</td><td>Bio · Statement · CV (기능 3)</td><td>틀 완성 · 예시 데이터</td></tr>
 <tr><td>Contact</td><td>연락처 · 문의 폼 (기능 3)</td><td>틀 완성 · 저장 연결 전</td></tr>
 </tbody>
 </table>
 </div>
-<p><strong>공통</strong> — 파란 배경 · 흰 글자 · + 격자 / 좌상단 메인으로 · 우상단 메뉴 · 하단 연락처 / 줄 끊김 → 페이드 전환.</p>
-<p><strong>데이터</strong> — 작업·글·이력·문의·자수는 Supabase 테이블, 이미지는 Storage. 코드 수정 없이 내용 추가.</p>
-<p><strong>제작 순서</strong> — 공통 레이아웃 → Work → About → Contact → Journal.</p>
+<p><strong>공통</strong> — 파란 배경 · 흰 글자 · dim + 격자 / 좌상단 이름(로고) → 메인 · 우상단 고정 메뉴 / 하단 푸터에 이메일 · SNS · © 상시 노출 / 탭 제목 "페이지명 — 이름".</p>
+<p><strong>원칙</strong> — 하위 페이지는 작품 이미지가 주인공. 메인의 물리·유리 효과는 없고, 이미지 페이드인 · 호버 살짝 확대 · 라이트박스만 쓴다. 컬렉션은 한 줄 2~3개, 여백 넉넉하게.</p>
+<p><strong>데이터</strong> — 컬렉션 · 작품 · 저널 · CV · 문의 · 자수는 Supabase 테이블, 이미지는 Storage <code>portfolio</code> 버킷. 공개 표시(<code>is_public</code>)한 것만 사이트에 보임. 테이블 만드는 SQL은 <code>supabase/schema.sql</code> (SQL Editor에서 직접 실행).</p>
+<p><strong>제작 순서</strong> — 공통 레이아웃 → Work(컬렉션 → 컬렉션 상세 → 작품 상세 → 스와치) → About → Contact → Journal.</p>
+<p><strong>보류 (2차)</strong> — 미공개 작업 보호 영역(Supabase Auth 또는 서명된 URL로), 본인 전용 관리자 페이지.</p>
+
+<h2>05-1. 하위 페이지 기능 한눈에 보기</h2>
+<p class="legend">
+  <span class="st ok">작동</span> 지금 바로 쓸 수 있음
+  <span class="st demo">예시</span> 작동하지만 예시 내용이 보임 (실제 내용으로 교체 필요)
+  <span class="st todo">연결 전</span> Supabase·파일이 있어야 완성
+</p>
+
+<h3>공통 (모든 하위 페이지)</h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>기능</th><th>하는 일</th><th>상태</th></tr></thead>
+<tbody>
+<tr><td>이름(로고)</td><td>좌측 상단 이름을 누르면 메인으로. 메인에서 줄이 흔들리며 다시 매달림</td><td><span class="st ok">작동</span></td></tr>
+<tr><td>메뉴 이동</td><td>우측 상단 Work · Journal · About · Contact, 모든 페이지 같은 자리. 지금 페이지는 노랑 밑줄</td><td><span class="st ok">작동</span></td></tr>
+<tr><td>푸터</td><td>이메일 · SNS · © 이름 연도, 모든 페이지 하단에 항상</td><td><span class="st demo">예시</span></td></tr>
+<tr><td>탭 제목</td><td>"Work — 이름", 상세는 "작품명 — 이름"</td><td><span class="st ok">작동</span></td></tr>
+<tr><td>라이트박스</td><td>이미지를 누르면 크게 보기. ←/→로 같은 묶음 넘기기, Esc·✕로 닫기</td><td><span class="st ok">작동</span></td></tr>
+<tr><td>이미지 효과</td><td>불러오면 서서히 나타남, 마우스를 올리면 살짝 확대 (그 외 장식 없음)</td><td><span class="st ok">작동</span></td></tr>
+<tr><td>배색 전환</td><td>푸터 버튼으로 파란 배경 ↔ 흰 배경</td><td><span class="st ok">작동</span></td></tr>
+<tr><td>이미지</td><td>지금은 X 스티치 무늬 상자로 자리만. 사진을 올리면 같은 비율로 교체</td><td><span class="st todo">연결 전</span></td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Work — 목록 <code>work.html</code></h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>기능</th><th>하는 일</th><th>상태</th></tr></thead>
+<tbody>
+<tr><td>탭</td><td>Collections / Swatch 전환. 주소에 남음</td><td><span class="st ok">작동</span></td></tr>
+<tr><td>기법 필터</td><td>Weave / Print / Stitch / Dye / Manipulation 여러 개 선택, 두 탭 공통. 고른 기법 중 하나라도 쓰면 보임</td><td><span class="st ok">작동</span></td></tr>
+<tr><td>대표 컬렉션</td><td>졸업 작품 등 1개를 맨 위에 크게 고정</td><td><span class="st demo">예시</span></td></tr>
+<tr><td>컬렉션 카드</td><td>대표 이미지 · 컬렉션명 · 연도 · 한 줄 설명, 한 줄 2~3개</td><td><span class="st demo">예시</span></td></tr>
+<tr><td>스와치 그리드</td><td>작은 정사각 썸네일. 누르면 크게 + 기법·섬유·크기·메모</td><td><span class="st demo">예시</span></td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>컬렉션 상세 <code>collection.html?id=…</code></h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>기능</th><th>하는 일</th><th>상태</th></tr></thead>
+<tbody>
+<tr><td>컬렉션 소개</td><td>제목 · 연도 · 컨셉 2~3문단 + 대표 이미지</td><td><span class="st demo">예시</span></td></tr>
+<tr><td>포함 작품</td><td>작품 카드, 누르면 작품 상세로</td><td><span class="st demo">예시</span></td></tr>
+<tr><td>이전 / 다음 컬렉션</td><td>정렬 순서대로 이동, 가운데 ALL WORK</td><td><span class="st ok">작동</span></td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>작품 상세 <code>work-detail.html?id=…</code></h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>기능</th><th>하는 일</th><th>상태</th></tr></thead>
+<tbody>
+<tr><td>대표 이미지</td><td>맨 위 큰 이미지 (누르면 크게)</td><td><span class="st todo">연결 전</span></td></tr>
+<tr><td>기본 정보</td><td>제목 · 연도 · 소속 컬렉션(링크) · 기법 태그(누르면 그 기법 목록으로)</td><td><span class="st demo">예시</span></td></tr>
+<tr><td>소재 정보</td><td>섬유 조성 · 기법 · 크기 · 사용 도구</td><td><span class="st demo">예시</span></td></tr>
+<tr><td>작업 설명</td><td>작품 설명 문단</td><td><span class="st demo">예시</span></td></tr>
+<tr><td>제작 과정 (필수)</td><td>스케치 → 패턴 전개 → 샘플 → 손 작업 사진. 항상 표시, 사진이 없으면 "준비 중"</td><td><span class="st demo">예시</span></td></tr>
+<tr><td>갤러리</td><td>전체 컷 + 질감 디테일 컷(정사각 · DETAIL 표시)</td><td><span class="st demo">예시</span></td></tr>
+<tr><td>같은 컬렉션 작품</td><td>다른 작품 카드 + 컬렉션으로 돌아가기</td><td><span class="st ok">작동</span></td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Journal — 목록 <code>journal.html</code> · 글 <code>journal-post.html?id=…</code></h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>기능</th><th>하는 일</th><th>상태</th></tr></thead>
+<tbody>
+<tr><td>카테고리 필터</td><td>All / Making / Research / Exhibition / Note. 주소에 남음</td><td><span class="st ok">작동</span></td></tr>
+<tr><td>글 목록</td><td>날짜를 크게 맨 앞에, 카테고리 · 제목 · 요약 · 썸네일, 최신순</td><td><span class="st demo">예시</span></td></tr>
+<tr><td>글 본문</td><td>문단과 이미지를 원하는 자리에 섞어 배치</td><td><span class="st demo">예시</span></td></tr>
+<tr><td>관련 작품 / 컬렉션</td><td>연결된 것이 있으면 카드로 표시</td><td><span class="st demo">예시</span></td></tr>
+<tr><td>이전 / 다음 글</td><td>날짜 순서대로 이동</td><td><span class="st ok">작동</span></td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>About <code>about.html</code></h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>기능</th><th>하는 일</th><th>상태</th></tr></thead>
+<tbody>
+<tr><td>섹션 이동</td><td>상단 Bio · Statement · CV 앵커, 부드럽게 스크롤</td><td><span class="st ok">작동</span></td></tr>
+<tr><td>Bio</td><td>프로필 사진 · 이름 · 한 줄 소개 · 짧은 약력 1문단</td><td><span class="st demo">예시</span></td></tr>
+<tr><td>Statement</td><td>작가 노트 2~3문단 (어려운 이론 대신 쉬운 말로)</td><td><span class="st demo">예시</span></td></tr>
+<tr><td>CV</td><td>Education · Exhibitions · Awards &amp; Grants · Residencies &amp; Activities · Press · Collections(소장처), 최신순. 개인전/단체전 표시, 예정 전시 upcoming, 기사 링크. 전화번호 없음</td><td><span class="st demo">예시</span></td></tr>
+<tr><td>CV PDF</td><td>PDF가 생기면 다운로드, 지금은 "준비 중"</td><td><span class="st todo">연결 전</span></td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>Contact <code>contact.html</code></h3>
+<div class="table-wrap">
+<table>
+<thead><tr><th>기능</th><th>하는 일</th><th>상태</th></tr></thead>
+<tbody>
+<tr><td>현재 상태</td><td>"협업 문의 가능" 한 줄</td><td><span class="st demo">예시</span></td></tr>
+<tr><td>이메일</td><td>누르면 주소 복사 + 메일 앱 열림</td><td><span class="st ok">작동</span></td></tr>
+<tr><td>SNS</td><td>SNS 링크 버튼 (새 창)</td><td><span class="st demo">예시</span></td></tr>
+<tr><td>문의 폼 · 검사</td><td>이름 · 이메일 · 문의 유형(협업/외주/전시/기타) · 내용, 빈 칸·이메일 형식 검사</td><td><span class="st ok">작동</span></td></tr>
+<tr><td>문의 폼 · 보내기</td><td>지금은 작성 내용이 채워진 메일 앱이 열림. Supabase 연결 후 사이트에 바로 저장</td><td><span class="st todo">연결 전</span></td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>실제 내용으로 바꾸려면</h3>
+<ul>
+<li><strong>이름 · 이메일 · SNS · 현재 상태 · CV PDF</strong> — <code>assets/site.js</code>의 <code>SITE</code> 한 곳만 고치면 모든 하위 페이지에 반영 (메인 화면 이름·이메일은 <code>index.html</code>에서 따로)</li>
+<li><strong>컬렉션 · 작품 · 스와치 · 저널 글 · CV 항목</strong> — 지금은 <code>assets/data.js</code>의 예시 데이터. Supabase 연결 후에는 테이블에 행만 추가하고 <code>is_public</code>을 켜면 공개</li>
+<li><strong>Bio · Statement · 프로필 사진</strong> — <code>assets/data.js</code>의 <code>ABOUT</code></li>
+<li><strong>이미지</strong> — 긴 변 2000px · 1MB 이하로 줄여 Storage <code>portfolio</code> 버킷에 올리고 주소를 데이터에 넣기</li>
+</ul>
 
 <h2>06. 얻고 싶은 것</h2>
 <p>졸업 전시를 계기로, 졸업 뒤에도 작업을 올릴 때마다 자라나는 나만의 포트폴리오를 갖고 싶다. 링크 하나로 내가 어떤 작업자인지 보여주고, 사이트 자체로 인터랙션을 직접 만드는 역량까지 증명하고 싶다.</p>

@@ -1,13 +1,15 @@
 // ==================================================================
-// 하위 페이지 공통: 사이트 정보, 헤더/푸터, + 격자 정렬, 페이지 전환
-// 각 페이지는 <body data-page="work"> 처럼 현재 메뉴를 표시한다.
+// 하위 페이지 공통: 사이트 정보, 헤더/푸터, + 격자 정렬, 라이트박스, 배색 전환
+// 각 페이지는 <body data-page="work" data-title="Work"> 처럼 현재 메뉴와 제목을 표시한다.
+// 하위 페이지는 인터랙션을 최소화한다: 이미지 페이드인, 호버 확대, 라이트박스만.
 // ==================================================================
 const SITE = {
   name: "KIM HANEUL",                       // 임시 가명 — 실제 이름 확정 후 교체
   email: "haneul.kim@example.com",           // 임시
-  instagram: "https://instagram.com/",       // 임시
-  instagramLabel: "Instagram",
-  status: "협업 문의 가능 · 2027.02 졸업 예정",
+  sns: [
+    { label: "Instagram", href: "https://instagram.com/" },   // 임시
+  ],
+  status: "협업 문의 가능",
   cvUrl: null,                               // CV PDF 경로 (예: "assets/cv.pdf"). null이면 '준비 중'
   menus: [
     { key: "work",    label: "Work",    href: "work.html" },
@@ -17,8 +19,6 @@ const SITE = {
   ],
 };
 
-const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
 // 문자열을 HTML에 넣을 때 항상 이스케이프
 function esc(s) {
   return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -26,18 +26,39 @@ function esc(s) {
 function param(name) {
   return new URLSearchParams(location.search).get(name);
 }
-// 이미지가 있으면 <img>, 없으면 스티치 무늬 자리 표시
-function media(src, alt, ratio = "4 / 5", label = "IMAGE") {
-  const style = `style="--ratio:${ratio}"`;
-  if (src) return `<img class="media" ${style} src="${esc(src)}" alt="${esc(alt)}" loading="lazy">`;
-  return `<div class="ph" ${style} role="img" aria-label="${esc(alt)} (이미지 준비 중)">${label ? `<span>${esc(label)}</span>` : ""}</div>`;
-}
 function formatDate(iso) {
   return iso ? iso.replaceAll("-", ".") : "";
+}
+// 빈 줄로 나뉜 텍스트 → 문단 배열
+function paragraphs(text) {
+  return String(text || "").split(/\n\s*\n/).map((t) => t.trim()).filter(Boolean);
+}
+// <title>을 "페이지명 — 이름" 형식으로
+// description을 주면 검색 결과·공유 미리보기에 쓰이는 설명도 바꾼다 (Journal·작품 글 노출용)
+function setTitle(pageName, description) {
+  document.title = `${pageName} — ${SITE.name}`;
+  if (description) document.querySelector('meta[name="description"]')?.setAttribute("content", description.slice(0, 160));
+}
+
+// 이미지가 있으면 <img>(불러오면 페이드인), 없으면 스티치 무늬 자리 표시
+function media(src, alt, ratio = "4 / 5", label = "IMAGE") {
+  const style = `style="--ratio:${ratio}"`;
+  if (src) {
+    return `<img class="media" ${style} src="${esc(src)}" alt="${esc(alt)}" loading="lazy" decoding="async" onload="this.classList.add('loaded')">`;
+  }
+  return `<div class="ph" ${style} role="img" aria-label="${esc(alt)} (이미지 준비 중)">${label ? `<span>${esc(label)}</span>` : ""}</div>`;
+}
+// 누르면 라이트박스로 크게 보는 이미지. 같은 group끼리 ←/→로 넘겨 본다.
+function zoomable({ src, alt, ratio = "4 / 5", label = "IMAGE", caption = "", info = "", group = "page" }) {
+  return `<button type="button" class="zoom" data-lb data-lb-group="${esc(group)}"
+    data-lb-src="${esc(src || "")}" data-lb-alt="${esc(alt)}" data-lb-ratio="${esc(ratio)}"
+    data-lb-caption="${esc(caption)}" data-lb-info="${esc(info)}" aria-label="${esc(alt)} 크게 보기">${media(src, alt, ratio, label)}</button>`;
 }
 
 function renderChrome() {
   const page = document.body.dataset.page;
+  if (document.body.dataset.title) setTitle(document.body.dataset.title);
+
   const bg = document.createElement("div");
   bg.className = "site-bg";
   bg.setAttribute("aria-hidden", "true");
@@ -46,7 +67,7 @@ function renderChrome() {
   const header = document.createElement("header");
   header.className = "site-header";
   header.innerHTML = `
-    <a class="home-link" href="index.html" data-home><span>←</span> PORTFOLIO</a>
+    <a class="logo" href="index.html" data-home>${esc(SITE.name)}</a>
     <nav class="site-nav" aria-label="메뉴">
       ${SITE.menus.map((m) => `<a href="${m.href}"${m.key === page ? ' aria-current="page"' : ""}>${m.label}</a>`).join("")}
     </nav>`;
@@ -57,7 +78,7 @@ function renderChrome() {
   footer.innerHTML = `
     <div class="links">
       <a href="mailto:${esc(SITE.email)}">${esc(SITE.email)}</a>
-      <a href="${esc(SITE.instagram)}" target="_blank" rel="noopener">${esc(SITE.instagramLabel)}</a>
+      ${SITE.sns.map((s) => `<a href="${esc(s.href)}" target="_blank" rel="noopener">${esc(s.label)}</a>`).join("")}
     </div>
     <div class="end">
       <button class="theme-btn" type="button" data-theme-toggle></button>
@@ -65,6 +86,11 @@ function renderChrome() {
     </div>`;
   document.body.append(footer);
   setupThemeToggle(footer.querySelector("[data-theme-toggle]"));
+
+  // 이름(로고)으로 메인에 돌아가면 메인의 줄이 다시 매달리는 연출
+  header.querySelector("[data-home]").addEventListener("click", () => {
+    try { sessionStorage.setItem("rehang", "1"); } catch (_) {}
+  });
 }
 
 // 배색 전환 (파란 배경 ↔ 흰 배경). 메인과 같은 localStorage 키를 쓴다.
@@ -87,7 +113,7 @@ function setupThemeToggle(btn) {
   sync();
 }
 
-// + 격자를 메인과 같이 화면 중앙 기준으로 정렬
+// + 격자를 메인과 같이 화면 중앙 기준으로 정렬 (dim 상태만, 밝아지는 효과 없음)
 function alignGrid() {
   const ox = Math.round(innerWidth / 2) - 12;
   const oy = Math.round(innerHeight / 2) - 12;
@@ -95,27 +121,75 @@ function alignGrid() {
   document.documentElement.style.setProperty("--grid-oy", oy + "px");
 }
 
-// 같은 사이트 안 이동은 페이드아웃 후 이동. 메인으로 갈 때는 줄이 다시 매달리는 연출을 요청.
-function setupTransitions() {
-  document.addEventListener("click", (e) => {
-    const a = e.target.closest("a[href]");
-    if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || a.target) return;
-    const url = new URL(a.href, location.href);
-    if (url.origin !== location.origin || !url.pathname.endsWith(".html") && !url.pathname.endsWith("/")) return;
-    if (url.pathname === location.pathname && url.hash) return;
-    if (/(^|\/)(index\.html)?$/.test(url.pathname)) {
-      try { sessionStorage.setItem("rehang", "1"); } catch (_) {}
+// ---------- 라이트박스 ----------
+const lightbox = (() => {
+  const el = document.createElement("div");
+  el.className = "lightbox";
+  el.hidden = true;
+  el.setAttribute("role", "dialog");
+  el.setAttribute("aria-modal", "true");
+  el.setAttribute("aria-label", "이미지 크게 보기");
+  el.innerHTML = `
+    <button class="lb-btn lb-close" type="button" aria-label="닫기">✕</button>
+    <button class="lb-btn lb-prev" type="button" aria-label="이전 이미지">←</button>
+    <figure class="lb-figure">
+      <div class="lb-media"></div>
+      <figcaption><strong class="lb-caption"></strong><span class="lb-info"></span><span class="lb-count"></span></figcaption>
+    </figure>
+    <button class="lb-btn lb-next" type="button" aria-label="다음 이미지">→</button>`;
+  let items = [];
+  let index = 0;
+  let opener = null;
+
+  function show(i) {
+    index = (i + items.length) % items.length;
+    const d = items[index].dataset;
+    el.querySelector(".lb-media").innerHTML = d.lbSrc
+      ? `<img src="${esc(d.lbSrc)}" alt="${esc(d.lbAlt)}">`
+      : media(null, d.lbAlt, d.lbRatio, "IMAGE");
+    el.querySelector(".lb-caption").textContent = d.lbCaption || d.lbAlt;
+    el.querySelector(".lb-info").textContent = d.lbInfo || "";
+    el.querySelector(".lb-count").textContent = items.length > 1 ? `${index + 1} / ${items.length}` : "";
+    el.querySelector(".lb-prev").hidden = el.querySelector(".lb-next").hidden = items.length < 2;
+  }
+  function open(trigger) {
+    opener = trigger;
+    items = [...document.querySelectorAll(`[data-lb][data-lb-group="${CSS.escape(trigger.dataset.lbGroup)}"]`)];
+    show(items.indexOf(trigger));
+    el.hidden = false;
+    document.body.style.overflow = "hidden";
+    el.querySelector(".lb-close").focus();
+  }
+  function close() {
+    el.hidden = true;
+    document.body.style.overflow = "";
+    if (opener) opener.focus();
+  }
+  el.querySelector(".lb-close").addEventListener("click", close);
+  el.querySelector(".lb-prev").addEventListener("click", () => show(index - 1));
+  el.querySelector(".lb-next").addEventListener("click", () => show(index + 1));
+  el.addEventListener("click", (e) => { if (e.target === el) close(); });
+  document.addEventListener("keydown", (e) => {
+    if (el.hidden) return;
+    if (e.key === "Escape") close();
+    else if (e.key === "ArrowLeft" && items.length > 1) show(index - 1);
+    else if (e.key === "ArrowRight" && items.length > 1) show(index + 1);
+    else if (e.key === "Tab") {
+      // 포커스를 라이트박스 안에 가둔다
+      const f = [...el.querySelectorAll("button:not([hidden])")];
+      const i = f.indexOf(document.activeElement);
+      if (e.shiftKey && i <= 0) { e.preventDefault(); f[f.length - 1].focus(); }
+      else if (!e.shiftKey && i === f.length - 1) { e.preventDefault(); f[0].focus(); }
     }
-    if (reducedMotion) return;
-    e.preventDefault();
-    document.body.classList.add("leaving");
-    setTimeout(() => (location.href = url.href), 280);
   });
-  // 뒤로가기(bfcache)로 돌아왔을 때 페이드아웃 상태 해제
-  addEventListener("pageshow", (e) => { if (e.persisted) document.body.classList.remove("leaving"); });
-}
+  document.addEventListener("click", (e) => {
+    const t = e.target.closest("[data-lb]");
+    if (t) open(t);
+  });
+  return { el };
+})();
 
 renderChrome();
+document.body.append(lightbox.el);
 alignGrid();
 addEventListener("resize", alignGrid);
-setupTransitions();

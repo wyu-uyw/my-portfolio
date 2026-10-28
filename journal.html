@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Journal</title>
+<title>Journal — KIM HANEUL</title>
 <meta name="description" content="작업 일지 — Making, Research, Exhibition, Note">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
@@ -13,24 +13,26 @@
   .posts { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
   .post a {
     display: grid;
-    grid-template-columns: 96px 1fr;
+    grid-template-columns: 1fr 88px;
     gap: 16px;
-    padding: 20px 0;
+    padding: 24px 0;
     border-bottom: 1px solid var(--line);
     text-decoration: none;
   }
-  @media (min-width: 720px) { .post a { grid-template-columns: 140px 1fr; gap: 28px; } }
-  .post .meta { font-size: 12.5px; letter-spacing: 0.08em; color: var(--text-soft); }
-  .post .meta b { font-weight: 500; color: var(--accent); }
-  .post h2 { margin: 4px 0 6px; font-size: clamp(18px, 2.4vw, 22px); font-weight: 400; line-height: 1.4; }
+  @media (min-width: 720px) { .post a { grid-template-columns: 150px 1fr 140px; gap: 32px; align-items: start; } }
+  /* 날짜는 눈에 띄게 */
+  .post time { font-size: 22px; font-weight: 300; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; line-height: 1.2; }
+  .post .cat { display: block; margin-top: 4px; font-size: 12px; font-weight: 500; letter-spacing: 0.14em; color: var(--accent); text-transform: uppercase; }
+  .post h2 { margin: 0 0 6px; font-size: clamp(18px, 2.4vw, 22px); font-weight: 400; line-height: 1.4; }
   .post p { margin: 0; color: var(--text-soft); font-size: 14.5px; }
   .post a:hover h2 { color: var(--accent); }
-  .post a:hover .ph, .post a:hover .media { border-color: var(--accent); }
+  .post .when { grid-column: 1 / -1; }
+  @media (min-width: 720px) { .post .when { grid-column: auto; } }
+  .post .frame { align-self: start; }
 </style>
 </head>
-<body data-page="journal">
+<body data-page="journal" data-title="Journal">
   <main>
-    <p class="kicker">Notes</p>
     <h1 class="page-title">Journal</h1>
     <p class="page-lead">만드는 과정, 리서치, 전시 이야기와 짧은 메모.</p>
 
@@ -62,12 +64,15 @@
       ? shown.map((p) => `
         <li class="post">
           <a href="journal-post.html?id=${encodeURIComponent(p.id)}">
-            ${media(p.thumbnail, p.title, "1 / 1", LABELS.category[p.category].toUpperCase())}
+            <div class="when">
+              <time datetime="${p.date}">${formatDate(p.date)}</time>
+              <span class="cat">${LABELS.category[p.category]}</span>
+            </div>
             <div>
-              <div class="meta"><time datetime="${p.date}">${formatDate(p.date)}</time> · <b>${LABELS.category[p.category]}</b></div>
               <h2>${esc(p.title)}</h2>
               <p>${esc(p.summary)}</p>
             </div>
+            <div class="frame">${media(p.images[0]?.src, p.title, "1 / 1", "")}</div>
           </a>
         </li>`).join("")
       : `<li class="empty">이 카테고리에는 아직 글이 없어요.</li>`;

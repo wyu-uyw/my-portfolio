@@ -3,16 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>About</title>
-<meta name="description" content="소개, 이력, 기술과 도구">
+<title>About — KIM HANEUL</title>
+<meta name="description" content="Bio, Statement, CV">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
 <link href="assets/site.css" rel="stylesheet">
 <script>try { if (localStorage.getItem("theme") === "inverse") document.documentElement.dataset.theme = "inverse"; } catch (_) {}</script>
 <style>
-  .profile { display: grid; gap: 24px; align-items: end; margin-top: 8px; }
-  @media (min-width: 720px) { .profile { grid-template-columns: 240px 1fr; gap: 40px; } }
-  .profile .ph, .profile .media { max-width: 240px; }
+  html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  .anchors { display: flex; gap: 20px; margin: 8px 0 8px; font-size: 14px; letter-spacing: 0.1em; }
+  .anchors a { text-decoration: none; color: var(--text-soft); border-bottom: 1px solid var(--line-strong); }
+  .anchors a:hover { color: var(--accent); border-color: var(--accent); }
+
+  .bio { display: grid; gap: 28px; align-items: end; }
+  @media (min-width: 760px) { .bio { grid-template-columns: 260px 1fr; gap: 48px; } }
+  .bio .zoom { max-width: 260px; }
   .name {
     margin: 4px 0 8px;
     font-weight: 300;
@@ -22,79 +28,83 @@
     -webkit-text-stroke: 1.5px var(--accent);
     paint-order: stroke fill;
   }
-  .one-liner { margin: 0; color: var(--accent); font-size: 17px; }
-  .intro p { font-size: 17px; max-width: 38em; margin: 0 0 1em; }
-
-  .timeline { display: grid; gap: 8px 40px; }
-  @media (min-width: 820px) { .timeline { grid-template-columns: 1fr 1fr; } }
-  .tl-group h3 { margin: 16px 0 8px; font-size: 14px; font-weight: 500; letter-spacing: 0.1em; color: var(--accent); }
-  .tl-group ol { list-style: none; margin: 0; padding: 0; }
-  .tl-group li { display: grid; grid-template-columns: 56px 1fr; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
-  .tl-group time { color: var(--text-soft); font-variant-numeric: tabular-nums; }
-
-  .skills { display: grid; gap: 24px; }
-  @media (min-width: 720px) { .skills { grid-template-columns: 1fr 1fr; gap: 40px; } }
-  .skills h3 { margin: 0 0 10px; font-size: 13px; font-weight: 500; letter-spacing: 0.14em; color: var(--text-soft); }
-  .skills ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
-  .skills li { padding: 6px 14px; border: 1px solid var(--line-strong); border-radius: 999px; font-size: 14px; }
+  .one-liner { margin: 0 0 16px; color: var(--accent); font-size: 17px; }
+  .bio-text { margin: 0; max-width: 36em; }
+  .statement p { font-size: 18px; line-height: 1.85; max-width: 34em; margin: 0 0 1.2em; }
+  .cv-grid { display: grid; gap: 0 48px; }
+  @media (min-width: 900px) { .cv-grid { grid-template-columns: 1fr 1fr; } }
+  .cv-download { margin-top: 32px; }
 </style>
 </head>
-<body data-page="about">
+<body data-page="about" data-title="About">
   <main>
-    <section class="profile" aria-label="프로필">
-      <div id="photo"></div>
-      <div>
-        <p class="kicker">About</p>
-        <h1 class="name" id="name"></h1>
-        <p class="one-liner" id="one-liner"></p>
+    <h1 class="page-title">About</h1>
+    <nav class="anchors" aria-label="섹션 이동">
+      <a href="#bio">Bio</a><a href="#statement">Statement</a><a href="#cv">CV</a>
+    </nav>
+
+    <section id="bio" aria-labelledby="bio-h">
+      <h2 class="section-title" id="bio-h">Bio</h2>
+      <div class="bio">
+        <div id="photo"></div>
+        <div>
+          <p class="name" id="name"></p>
+          <p class="one-liner" id="one-liner"></p>
+          <p class="bio-text" id="bio-text"></p>
+        </div>
       </div>
     </section>
 
-    <h2 class="section-title">Introduction</h2>
-    <div class="intro" id="intro"></div>
+    <section id="statement" aria-labelledby="statement-h">
+      <h2 class="section-title" id="statement-h">Statement</h2>
+      <div class="statement" id="statement-text"></div>
+    </section>
 
-    <h2 class="section-title">History</h2>
-    <div class="timeline" id="timeline"></div>
-
-    <h2 class="section-title">Skills &amp; Tools</h2>
-    <div class="skills">
-      <div><h3>기법</h3><ul id="skills"></ul></div>
-      <div><h3>소프트웨어</h3><ul id="tools"></ul></div>
-    </div>
-
-    <h2 class="section-title">CV</h2>
-    <a class="btn solid" id="cv">CV PDF 다운로드</a>
+    <section id="cv" aria-labelledby="cv-h">
+      <h2 class="section-title" id="cv-h">CV</h2>
+      <div class="cv-grid" id="cv-list"></div>
+      <div class="cv-download"><a class="btn solid" id="cv-pdf">CV PDF 다운로드</a></div>
+    </section>
   </main>
 
   <script src="assets/site.js"></script>
   <script src="assets/data.js"></script>
   <script>
-  document.getElementById("photo").innerHTML = media(ABOUT.photo, SITE.name, "3 / 4", "PHOTO");
+  document.getElementById("photo").innerHTML =
+    zoomable({ src: ABOUT.photo, alt: SITE.name, ratio: "3 / 4", label: "PHOTO", caption: SITE.name, group: "photo" });
   document.getElementById("name").textContent = SITE.name;
   document.getElementById("one-liner").textContent = ABOUT.oneLiner;
-  document.getElementById("intro").innerHTML = ABOUT.intro.map((t) => `<p>${esc(t)}</p>`).join("");
-  document.getElementById("skills").innerHTML = ABOUT.skills.map((s) => `<li>${esc(s)}</li>`).join("");
-  document.getElementById("tools").innerHTML = ABOUT.tools.map((s) => `<li>${esc(s)}</li>`).join("");
+  document.getElementById("bio-text").textContent = ABOUT.bio;
+  document.getElementById("statement-text").innerHTML = ABOUT.statement.map((p) => `<p>${esc(p)}</p>`).join("");
 
-  const cv = document.getElementById("cv");
+  const pdf = document.getElementById("cv-pdf");
   if (SITE.cvUrl) {
-    cv.href = SITE.cvUrl;
-    cv.setAttribute("download", "");
+    pdf.href = SITE.cvUrl;
+    pdf.setAttribute("download", "");
   } else {
-    cv.textContent = "CV 준비 중";
-    cv.setAttribute("aria-disabled", "true");
+    pdf.textContent = "CV PDF 준비 중";
+    pdf.setAttribute("aria-disabled", "true");
   }
 
-  // 이력: 구분별로 묶고, 각 구분 안은 연도 역순 (DB.history가 정렬해서 줌)
-  DB.history().then((items) => {
-    document.getElementById("timeline").innerHTML = Object.entries(LABELS.history).map(([kind, label]) => {
-      const rows = items.filter((h) => h.kind === kind);
+  // CV: 섹션별로 묶고, 각 섹션 안은 최신순 (DB.cv가 정렬해서 줌). 웹 노출 CV에는 전화번호를 넣지 않는다.
+  function cvRow(item) {
+    const where = [item.venue, item.location].filter(Boolean).join(", ");
+    const title = item.link
+      ? `<a href="${esc(item.link)}" target="_blank" rel="noopener">${esc(item.title)} ↗</a>`
+      : esc(item.title);
+    return `<li>
+      <time>${esc(item.year)}</time>
+      <div>
+        ${title}${item.note ? `<span class="badge">${esc(item.note)}</span>` : ""}${item.is_upcoming ? `<span class="badge upcoming">upcoming</span>` : ""}
+        ${where ? `<div class="where">${esc(where)}</div>` : ""}
+      </div>
+    </li>`;
+  }
+  DB.cv().then((items) => {
+    document.getElementById("cv-list").innerHTML = Object.entries(LABELS.cv).map(([section, label]) => {
+      const rows = items.filter((i) => i.section === section);
       if (!rows.length) return "";
-      return `
-        <section class="tl-group">
-          <h3>${label}</h3>
-          <ol>${rows.map((h) => `<li><time>${esc(h.year)}</time><span>${esc(h.text)}</span></li>`).join("")}</ol>
-        </section>`;
+      return `<section class="cv-section"><h3>${label}</h3><ul class="cv-list">${rows.map(cvRow).join("")}</ul></section>`;
     }).join("");
   });
   </script>

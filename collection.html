@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Collection — KIM HANEUL</title>
+<meta name="description" content="컬렉션 — 소개와 포함된 작품">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
+<link href="assets/site.css" rel="stylesheet">
+<script>try { if (localStorage.getItem("theme") === "inverse") document.documentElement.dataset.theme = "inverse"; } catch (_) {}</script>
+<style>
+  .intro { display: grid; gap: 24px; margin: 8px 0 24px; }
+  @media (min-width: 860px) { .intro { grid-template-columns: 1fr 1.2fr; gap: 56px; } }
+  .c-title { margin: 6px 0 16px; font-weight: 300; font-size: clamp(40px, 7vw, 80px); line-height: 1.05; }
+  .concept p { font-size: 17px; margin: 0 0 1.2em; max-width: 36em; }
+</style>
+</head>
+<body data-page="work" data-title="Collection">
+  <main id="main"><p class="empty">불러오는 중…</p></main>
+
+  <script src="assets/site.js"></script>
+  <script src="assets/data.js"></script>
+  <script>
+  const main = document.getElementById("main");
+
+  function pagerLink(c, cls, label) {
+    if (!c) return `<span class="${cls}"></span>`;
+    return `<a class="${cls}" href="collection.html?id=${encodeURIComponent(c.id)}"><small>${label}</small>${esc(c.title)}</a>`;
+  }
+
+  async function load() {
+    const all = await DB.collections();
+    const i = all.findIndex((c) => c.id === param("id"));
+    if (i < 0) {
+      main.innerHTML = `<p class="empty">컬렉션을 찾을 수 없어요.<br><br><a class="btn" href="work.html">Work로</a></p>`;
+      return;
+    }
+    const c = all[i];
+    const works = await DB.worksInCollection(c.id);
+    setTitle(c.title, paragraphs(c.concept)[0]);
+
+    main.innerHTML = `
+      <section class="intro" aria-label="컬렉션 소개">
+        <div>
+          <p class="kicker">Collection · ${c.year}</p>
+          <h1 class="c-title">${esc(c.title)}</h1>
+          <div class="concept">${paragraphs(c.concept).map((p) => `<p>${esc(p)}</p>`).join("")}</div>
+        </div>
+        ${zoomable({ src: c.cover_image, alt: c.title, ratio: "4 / 5", label: "COVER", caption: c.title, group: "cover" })}
+      </section>
+
+      <h2 class="section-title">Works · ${works.length}</h2>
+      ${works.length ? `<div class="collections">${works.map((w) => `
+        <a class="card" href="work-detail.html?id=${encodeURIComponent(w.id)}">
+          <div class="frame">${media(w.cover_image, w.title, "4 / 5", "WORK")}</div>
+          <h3 class="card-title">${esc(w.title)}</h3>
+          <div class="card-meta">${w.year}</div>
+          <div class="tags">${w.techniques.map((t) => `<span class="tag">${LABELS.technique[t]}</span>`).join("")}</div>
+        </a>`).join("")}</div>` : `<p class="empty">아직 공개된 작품이 없어요.</p>`}
+
+      <nav class="pager" aria-label="컬렉션 이동">
+        ${pagerLink(all[i - 1], "prev", "← PREV COLLECTION")}
+        <a class="list" href="work.html">ALL WORK</a>
+        ${pagerLink(all[i + 1], "next", "NEXT COLLECTION →")}
+      </nav>`;
+  }
+  load();
+  </script>
+</body>
+</html>

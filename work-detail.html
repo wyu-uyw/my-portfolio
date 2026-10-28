@@ -3,29 +3,32 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Work Detail</title>
-<meta name="description" content="작업 상세 — 컨셉, 소재, 과정, 갤러리">
+<title>Work — KIM HANEUL</title>
+<meta name="description" content="작품 상세 — 소재, 제작 과정, 갤러리">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
 <link href="assets/site.css" rel="stylesheet">
 <script>try { if (localStorage.getItem("theme") === "inverse") document.documentElement.dataset.theme = "inverse"; } catch (_) {}</script>
 <style>
-  .hero { margin: 8px 0 28px; }
-  .overview { display: grid; gap: 24px; }
-  @media (min-width: 820px) { .overview { grid-template-columns: 1.3fr 1fr; gap: 48px; } }
-  .work-title { margin: 6px 0 10px; font-weight: 300; font-size: clamp(36px, 7vw, 72px); line-height: 1.05; }
-  .concept { font-size: 17px; max-width: 38em; }
-  .process { display: grid; gap: 28px 20px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); counter-reset: step; }
-  .step h3 { margin: 12px 0 4px; font-size: 15px; font-weight: 500; }
-  .step h3::before { counter-increment: step; content: "0" counter(step) "  "; color: var(--accent); letter-spacing: 0.08em; }
-  .step p { margin: 0; color: var(--text-soft); font-size: 14.5px; }
-  .gallery { display: grid; gap: 20px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+  .hero { margin: 8px 0 40px; }
+  .overview { display: grid; gap: 32px; }
+  @media (min-width: 860px) { .overview { grid-template-columns: 1.3fr 1fr; gap: 56px; } }
+  .w-title { margin: 6px 0 12px; font-weight: 300; font-size: clamp(36px, 6vw, 64px); line-height: 1.1; }
+  .w-meta { margin: 0 0 12px; color: var(--text-soft); }
+  .w-meta a { color: var(--text); }
+  .w-meta a:hover { color: var(--accent); }
+  .description p { font-size: 17px; margin: 0 0 1.2em; max-width: 36em; }
+  .process { list-style: none; margin: 0; padding: 0; display: grid; gap: 32px 20px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); }
+  .process h3 { margin: 12px 0 2px; font-size: 15px; font-weight: 500; }
+  .process h3 span { color: var(--accent); margin-right: 8px; letter-spacing: 0.06em; }
+  .process p { margin: 0; color: var(--text-soft); font-size: 14.5px; }
+  .gallery { display: grid; gap: 28px 20px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); }
   .gallery figure { margin: 0; }
   .gallery figcaption { margin-top: 8px; font-size: 13px; color: var(--text-soft); }
   .gallery .detail figcaption::after { content: " · DETAIL"; color: var(--accent); letter-spacing: 0.1em; font-size: 11px; }
 </style>
 </head>
-<body data-page="work">
+<body data-page="work" data-title="Work">
   <main id="main"><p class="empty">불러오는 중…</p></main>
 
   <script src="assets/site.js"></script>
@@ -33,68 +36,78 @@
   <script>
   const main = document.getElementById("main");
 
-  function pagerLink(w, cls, label) {
-    if (!w) return `<span class="${cls}"></span>`;
-    return `<a class="${cls}" href="work-detail.html?id=${encodeURIComponent(w.id)}"><small>${label}</small>${esc(w.title)}</a>`;
-  }
-
   async function load() {
-    const works = await DB.works();
-    const i = works.findIndex((w) => w.id === param("id"));
-    if (i < 0) {
-      main.innerHTML = `<p class="empty">작업을 찾을 수 없어요.<br><br><a class="btn" href="work.html">목록으로</a></p>`;
+    const w = await DB.work(param("id"));
+    if (!w) {
+      main.innerHTML = `<p class="empty">작품을 찾을 수 없어요.<br><br><a class="btn" href="work.html">Work로</a></p>`;
       return;
     }
-    const w = works[i];
-    document.title = `${w.title} — Work`;
-    const m = w.materials || {};
+    const collection = w.collection_id ? await DB.collection(w.collection_id) : null;
+    const siblings = collection ? (await DB.worksInCollection(collection.id)).filter((x) => x.id !== w.id) : [];
+    setTitle(w.title, paragraphs(w.description)[0]);
+    const techs = w.techniques.map((t) => LABELS.techniqueKo[t]).join(", ");
 
     main.innerHTML = `
-      <div class="hero">${media(w.cover, w.title, "16 / 9", "COVER")}</div>
+      <div class="hero">${zoomable({ src: w.cover_image, alt: w.title, ratio: "16 / 10", label: "MAIN IMAGE", caption: w.title, group: "hero" })}</div>
 
-      <section class="overview" aria-label="개요">
+      <section class="overview" aria-label="기본 정보">
         <div>
-          <p class="kicker">${LABELS.section[w.section]} · ${w.year}</p>
-          <h1 class="work-title">${esc(w.title)}</h1>
-          <div class="tags">${w.techniques.map((t) => `<a class="tag" href="work.html?tech=${t}" style="text-decoration:none">${LABELS.technique[t]}</a>`).join("")}</div>
-          <p class="concept">${esc(w.concept || w.summary)}</p>
+          <p class="kicker">${w.type === "swatch" ? "Swatch" : "Work"} · ${w.year}</p>
+          <h1 class="w-title">${esc(w.title)}</h1>
+          ${collection ? `<p class="w-meta">Collection — <a href="collection.html?id=${encodeURIComponent(collection.id)}">${esc(collection.title)}</a></p>` : ""}
+          <div class="tags">${w.techniques.map((t) => `<a class="tag" style="text-decoration:none" href="work.html?tech=${t}">${LABELS.technique[t]}</a>`).join("")}</div>
+          <h2 class="section-title">Description</h2>
+          <div class="description">${paragraphs(w.description).map((p) => `<p>${esc(p)}</p>`).join("")}</div>
         </div>
         <div>
           <h2 class="section-title" style="margin-top:0">Material</h2>
           <dl class="spec">
-            <dt>섬유 조성</dt><dd>${esc(m.fiber || "—")}</dd>
-            <dt>기법</dt><dd>${esc(m.technique || "—")}</dd>
-            <dt>크기</dt><dd>${esc(m.size || "—")}</dd>
-            <dt>사용 도구</dt><dd>${esc(m.tools || "—")}</dd>
+            <dt>섬유 조성</dt><dd>${esc(w.fiber || "—")}</dd>
+            <dt>기법</dt><dd>${esc(techs || "—")}</dd>
+            <dt>크기</dt><dd>${esc(w.size || "—")}</dd>
+            <dt>사용 도구</dt><dd>${esc(w.tools || "—")}</dd>
           </dl>
         </div>
       </section>
 
-      ${w.process.length ? `
       <h2 class="section-title">Process</h2>
-      <ol class="process" style="list-style:none;padding:0;margin:0">
-        ${w.process.map((p) => `
-          <li class="step">
-            ${media(p.image, p.step, "1 / 1", p.step)}
-            <h3>${esc(p.step)}</h3>
-            <p>${esc(p.text)}</p>
-          </li>`).join("")}
-      </ol>` : ""}
+      ${w.process_images.length ? `
+      <ol class="process">
+        ${w.process_images.map((p, n) => {
+          const step = LABELS.process[p.step] || p.step;
+          return `<li>
+            ${zoomable({ src: p.src, alt: `${w.title} — ${step}`, ratio: "1 / 1", label: step, caption: step, info: p.caption, group: "process" })}
+            <h3><span>0${n + 1}</span>${esc(step)}</h3>
+            <p>${esc(p.caption)}</p>
+          </li>`;
+        }).join("")}
+      </ol>` : `<p class="muted">제작 과정 사진을 준비 중이에요.</p>`}
 
-      ${w.gallery.length ? `
+      ${w.gallery_images.length ? `
       <h2 class="section-title">Gallery</h2>
       <div class="gallery">
-        ${w.gallery.map((g) => `
+        ${w.gallery_images.map((g) => `
           <figure class="${g.detail ? "detail" : ""}">
-            ${media(g.src, g.caption, g.detail ? "1 / 1" : "4 / 5", g.detail ? "DETAIL" : "IMAGE")}
+            ${zoomable({ src: g.src, alt: `${w.title} — ${g.caption}`, ratio: g.detail ? "1 / 1" : "4 / 5", label: g.detail ? "DETAIL" : "IMAGE", caption: g.caption, group: "gallery" })}
             <figcaption>${esc(g.caption)}</figcaption>
           </figure>`).join("")}
       </div>` : ""}
 
-      <nav class="pager" aria-label="작업 이동">
-        ${pagerLink(works[i - 1], "prev", "← PREV")}
-        <a class="list" href="work.html">LIST</a>
-        ${pagerLink(works[i + 1], "next", "NEXT →")}
+      ${collection ? `
+      <h2 class="section-title">More from ${esc(collection.title)}</h2>
+      ${siblings.length ? `<div class="collections">${siblings.map((s) => `
+        <a class="card" href="work-detail.html?id=${encodeURIComponent(s.id)}">
+          <div class="frame">${media(s.cover_image, s.title, "4 / 5", "WORK")}</div>
+          <h3 class="card-title">${esc(s.title)}</h3>
+          <div class="card-meta">${s.year}</div>
+        </a>`).join("")}</div>` : `<p class="muted">이 컬렉션의 다른 작품은 아직 없어요.</p>`}` : ""}
+
+      <nav class="pager" aria-label="작품 이동">
+        <span></span>
+        ${collection
+          ? `<a class="list" href="collection.html?id=${encodeURIComponent(collection.id)}">BACK TO COLLECTION</a>`
+          : `<a class="list" href="work.html${w.type === "swatch" ? "?tab=swatch" : ""}">BACK TO WORK</a>`}
+        <span></span>
       </nav>`;
   }
   load();

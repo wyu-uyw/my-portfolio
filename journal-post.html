@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Journal Post</title>
+<title>Journal — KIM HANEUL</title>
 <meta name="description" content="저널 글">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
@@ -11,19 +11,21 @@
 <script>try { if (localStorage.getItem("theme") === "inverse") document.documentElement.dataset.theme = "inverse"; } catch (_) {}</script>
 <style>
   article { max-width: 720px; margin: 0 auto; }
+  .post-date { font-size: 22px; font-weight: 300; font-variant-numeric: tabular-nums; }
   .post-title { margin: 8px 0 12px; font-weight: 300; font-size: clamp(32px, 6vw, 56px); line-height: 1.15; }
-  .meta { font-size: 13px; letter-spacing: 0.08em; color: var(--text-soft); margin-bottom: 40px; }
-  .meta a { color: var(--accent); text-decoration: none; }
+  .meta { font-size: 13px; letter-spacing: 0.12em; margin-bottom: 40px; }
+  .meta a { color: var(--accent); text-decoration: none; text-transform: uppercase; }
   .body p { font-size: 17px; margin: 0 0 1.4em; }
   .body figure { margin: 2em 0; }
   .body figcaption { margin-top: 8px; font-size: 13px; color: var(--text-soft); }
-  .related { display: flex; gap: 16px; align-items: center; padding: 16px; border: 1px solid var(--line); text-decoration: none; margin-top: 40px; }
-  .related:hover { border-color: var(--accent); }
-  .related .ph, .related .media { width: 72px; flex: none; }
+  .related { display: grid; gap: 12px; margin-top: 40px; }
+  .related a { display: flex; gap: 16px; align-items: center; padding: 14px; border: 1px solid var(--line); text-decoration: none; }
+  .related a:hover { border-color: var(--accent); }
+  .related .frame { width: 64px; flex: none; }
   .related small { display: block; font-size: 11px; letter-spacing: 0.16em; color: var(--accent); }
 </style>
 </head>
-<body data-page="journal">
+<body data-page="journal" data-title="Journal">
   <main><article id="post"><p class="empty">불러오는 중…</p></article></main>
 
   <script src="assets/site.js"></script>
@@ -35,6 +37,30 @@
     if (!p) return `<span class="${cls}"></span>`;
     return `<a class="${cls}" href="journal-post.html?id=${encodeURIComponent(p.id)}"><small>${label}</small>${esc(p.title)}</a>`;
   }
+  function figure(img, alt) {
+    return `<figure>${zoomable({ src: img.src, alt: img.caption || alt, ratio: "3 / 2", caption: img.caption, group: "post" })}
+      ${img.caption ? `<figcaption>${esc(img.caption)}</figcaption>` : ""}</figure>`;
+  }
+  // 본문: 빈 줄로 문단 구분, [[image:n]] 줄은 images[n] 자리. 쓰지 않은 이미지는 끝에 붙인다.
+  function renderBody(p) {
+    const used = new Set();
+    const html = paragraphs(p.body).map((block) => {
+      const m = block.match(/^\[\[image:(\d+)\]\]$/);
+      if (m) {
+        const img = p.images[+m[1]];
+        if (!img) return "";
+        used.add(+m[1]);
+        return figure(img, p.title);
+      }
+      return `<p>${esc(block)}</p>`;
+    });
+    p.images.forEach((img, i) => { if (!used.has(i)) html.push(figure(img, p.title)); });
+    return html.join("");
+  }
+  function relatedLink(href, kind, title, cover) {
+    return `<a href="${href}"><div class="frame">${media(cover, title, "1 / 1", "")}</div>
+      <div><small>${kind}</small>${esc(title)}</div></a>`;
+  }
 
   async function load() {
     const posts = await DB.posts();          // 최신순
@@ -44,23 +70,21 @@
       return;
     }
     const p = posts[i];
-    const work = p.related_work_id ? await DB.work(p.related_work_id) : null;
-    document.title = `${p.title} — Journal`;
+    const [work, collection] = await Promise.all([
+      p.related_work_id ? DB.work(p.related_work_id) : null,
+      p.related_collection_id ? DB.collection(p.related_collection_id) : null,
+    ]);
+    setTitle(p.title, p.summary);
 
     el.innerHTML = `
-      <p class="kicker">${LABELS.category[p.category]}</p>
+      <time class="post-date" datetime="${p.date}">${formatDate(p.date)}</time>
       <h1 class="post-title">${esc(p.title)}</h1>
-      <div class="meta"><time datetime="${p.date}">${formatDate(p.date)}</time> · <a href="journal.html?category=${p.category}">${LABELS.category[p.category]}</a></div>
-      <div class="body">
-        ${p.body.map((b) => b.type === "img"
-          ? `<figure>${media(b.src, b.caption, "3 / 2")}<figcaption>${esc(b.caption)}</figcaption></figure>`
-          : `<p>${esc(b.text)}</p>`).join("")}
-      </div>
-      ${work ? `
-      <a class="related" href="work-detail.html?id=${encodeURIComponent(work.id)}">
-        ${media(work.cover, work.title, "1 / 1", "")}
-        <div><small>RELATED WORK</small>${esc(work.title)} <span class="muted">· ${work.year}</span></div>
-      </a>` : ""}
+      <div class="meta"><a href="journal.html?category=${p.category}">${LABELS.category[p.category]}</a></div>
+      <div class="body">${renderBody(p)}</div>
+      ${work || collection ? `<div class="related">
+        ${work ? relatedLink(`work-detail.html?id=${encodeURIComponent(work.id)}`, "RELATED WORK", work.title, work.cover_image) : ""}
+        ${collection ? relatedLink(`collection.html?id=${encodeURIComponent(collection.id)}`, "RELATED COLLECTION", collection.title, collection.cover_image) : ""}
+      </div>` : ""}
       <nav class="pager" aria-label="글 이동">
         ${pagerLink(posts[i + 1], "prev", "← PREV")}
         <a class="list" href="journal.html">LIST</a>

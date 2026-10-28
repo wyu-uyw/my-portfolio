@@ -3,90 +3,137 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Work</title>
-<meta name="description" content="작업 목록 — Projects와 Swatch">
+<title>Work — KIM HANEUL</title>
+<meta name="description" content="작업 — 컬렉션과 스와치">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
 <link href="assets/site.css" rel="stylesheet">
 <script>try { if (localStorage.getItem("theme") === "inverse") document.documentElement.dataset.theme = "inverse"; } catch (_) {}</script>
 </head>
-<body data-page="work">
+<body data-page="work" data-title="Work">
   <main>
-    <p class="kicker">Portfolio</p>
     <h1 class="page-title">Work</h1>
-    <p class="page-lead">완성한 프로젝트와, 소재·기법을 실험한 스와치를 모았습니다.</p>
+
+    <div class="tabs" role="tablist" aria-label="작업 구분">
+      <button class="tab" type="button" role="tab" id="tab-collections" aria-controls="panel" data-tab="collections">Collections</button>
+      <button class="tab" type="button" role="tab" id="tab-swatch" aria-controls="panel" data-tab="swatch">Swatch</button>
+    </div>
 
     <div class="filters">
-      <div class="chip-row" role="group" aria-label="섹션">
-        <span class="chip-label">SECTION</span>
-        <button class="chip" type="button" data-section="all">All</button>
-        <button class="chip" type="button" data-section="projects">Projects</button>
-        <button class="chip" type="button" data-section="swatch">Swatch</button>
-      </div>
       <div class="chip-row" role="group" aria-label="기법 (복수 선택)">
         <span class="chip-label">TECHNIQUE</span>
         <button class="chip" type="button" data-tech="weave">Weave</button>
         <button class="chip" type="button" data-tech="print">Print</button>
         <button class="chip" type="button" data-tech="stitch">Stitch</button>
         <button class="chip" type="button" data-tech="dye">Dye</button>
+        <button class="chip" type="button" data-tech="manipulation">Manipulation</button>
       </div>
     </div>
 
-    <p id="count" class="muted" aria-live="polite"></p>
-    <div id="list" class="grid"></div>
+    <div id="panel" role="tabpanel"></div>
   </main>
 
   <script src="assets/site.js"></script>
   <script src="assets/data.js"></script>
   <script>
-  // 필터 상태는 주소(?section=&tech=)에 남겨 공유·뒤로가기 시 유지
+  // 탭·기법 필터는 주소(?tab=swatch&tech=weave,dye)에 남겨 공유·뒤로가기 시 유지
   const state = {
-    section: param("section") || "all",
+    tab: param("tab") === "swatch" ? "swatch" : "collections",
     tech: new Set((param("tech") || "").split(",").filter((t) => t in LABELS.technique)),
   };
-  let works = [];
+  let collections = [], projects = [], swatches = [];
+  const panel = document.getElementById("panel");
+
+  // 선택한 기법 중 하나라도 쓰면 통과 (OR). 선택이 없으면 전부.
+  const usesTech = (techniques) => !state.tech.size || techniques.some((t) => state.tech.has(t));
+  const firstSentence = (text) => (paragraphs(text)[0] || "").split(/(?<=[.。!?])\s/)[0];
 
   function syncUrl() {
     const q = new URLSearchParams();
-    if (state.section !== "all") q.set("section", state.section);
+    if (state.tab === "swatch") q.set("tab", "swatch");
     if (state.tech.size) q.set("tech", [...state.tech].join(","));
     history.replaceState(null, "", q.toString() ? "?" + q : location.pathname);
   }
 
-  function render() {
-    document.querySelectorAll("[data-section]").forEach((b) =>
-      b.setAttribute("aria-pressed", String(b.dataset.section === state.section)));
-    document.querySelectorAll("[data-tech]").forEach((b) =>
-      b.setAttribute("aria-pressed", String(state.tech.has(b.dataset.tech))));
-
-    // 기법은 선택한 것 중 하나라도 쓴 작업을 보여준다 (OR)
-    const shown = works.filter((w) =>
-      (state.section === "all" || w.section === state.section) &&
-      (!state.tech.size || w.techniques.some((t) => state.tech.has(t))));
-
-    document.getElementById("count").textContent = `${shown.length}개 작업`;
-    document.getElementById("list").innerHTML = shown.length
-      ? shown.map((w) => `
-        <a class="card" href="work-detail.html?id=${encodeURIComponent(w.id)}">
-          ${media(w.cover, w.title, "4 / 5", LABELS.section[w.section].toUpperCase())}
-          <h2 class="card-title">${esc(w.title)}</h2>
-          <div class="card-meta">${w.year} · ${LABELS.section[w.section]}</div>
-          <div class="tags">${w.techniques.map((t) => `<span class="tag">${LABELS.technique[t]}</span>`).join("")}</div>
-        </a>`).join("")
-      : `<p class="empty">조건에 맞는 작업이 없어요.</p>`;
+  function collectionCard(c, featured) {
+    const href = `collection.html?id=${encodeURIComponent(c.id)}`;
+    if (featured) {
+      return `
+        <a class="featured card" href="${href}">
+          <div class="frame">${media(c.cover_image, c.title, "16 / 10", "FEATURED")}</div>
+          <div>
+            <p class="kicker">Featured · ${c.year}</p>
+            <h2 class="featured-title">${esc(c.title)}</h2>
+            <p class="card-desc">${esc(firstSentence(c.concept))}</p>
+          </div>
+        </a>`;
+    }
+    return `
+      <a class="card" href="${href}">
+        <div class="frame">${media(c.cover_image, c.title, "4 / 5", "COLLECTION")}</div>
+        <h2 class="card-title">${esc(c.title)}</h2>
+        <div class="card-meta">${c.year}</div>
+        <p class="card-desc">${esc(firstSentence(c.concept))}</p>
+      </a>`;
   }
 
-  document.querySelectorAll("[data-section]").forEach((b) => b.addEventListener("click", () => {
-    state.section = b.dataset.section;
+  function renderCollections() {
+    // 컬렉션 안 작품 중 하나라도 선택한 기법을 쓰면 표시
+    const shown = collections.filter((c) =>
+      usesTech(projects.filter((w) => w.collection_id === c.id).flatMap((w) => w.techniques)));
+    if (!shown.length) return `<p class="empty">조건에 맞는 컬렉션이 없어요.</p>`;
+    const featured = shown.find((c) => c.is_featured);
+    const rest = shown.filter((c) => c !== featured);
+    return (featured ? collectionCard(featured, true) : "") +
+      (rest.length ? `<div class="collections">${rest.map((c) => collectionCard(c)).join("")}</div>` : "");
+  }
+
+  function renderSwatches() {
+    const shown = swatches.filter((w) => usesTech(w.techniques));
+    if (!shown.length) return `<p class="empty">조건에 맞는 스와치가 없어요.</p>`;
+    return `<div class="swatches">${shown.map((w) => {
+      const info = [w.techniques.map((t) => LABELS.technique[t]).join(" · "), w.fiber, w.size, w.description]
+        .filter(Boolean).join("  /  ");
+      return `<figure style="margin:0">
+        ${zoomable({ src: w.cover_image, alt: w.title, ratio: "1 / 1", label: "", caption: `${w.title} · ${w.year}`, info, group: "swatch" })}
+        <figcaption class="swatch-name">${esc(w.title)}</figcaption>
+      </figure>`;
+    }).join("")}</div>`;
+  }
+
+  function render() {
+    document.querySelectorAll("[data-tab]").forEach((b) => {
+      const on = b.dataset.tab === state.tab;
+      b.setAttribute("aria-selected", String(on));
+      b.tabIndex = on ? 0 : -1;
+    });
+    panel.setAttribute("aria-labelledby", "tab-" + state.tab);
+    document.querySelectorAll("[data-tech]").forEach((b) =>
+      b.setAttribute("aria-pressed", String(state.tech.has(b.dataset.tech))));
+    panel.innerHTML = state.tab === "swatch" ? renderSwatches() : renderCollections();
+  }
+
+  document.querySelectorAll("[data-tab]").forEach((b) => b.addEventListener("click", () => {
+    state.tab = b.dataset.tab;
     syncUrl(); render();
   }));
+  // 탭 사이를 ←/→로 이동
+  document.querySelector(".tabs").addEventListener("keydown", (e) => {
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+    state.tab = state.tab === "swatch" ? "collections" : "swatch";
+    syncUrl(); render();
+    document.getElementById("tab-" + state.tab).focus();
+  });
   document.querySelectorAll("[data-tech]").forEach((b) => b.addEventListener("click", () => {
     const t = b.dataset.tech;
     state.tech.has(t) ? state.tech.delete(t) : state.tech.add(t);
     syncUrl(); render();
   }));
 
-  DB.works().then((data) => { works = data; render(); });
+  Promise.all([DB.collections(), DB.works("project"), DB.works("swatch")]).then(([c, p, s]) => {
+    collections = c; projects = p; swatches = s;
+    render();
+  });
   </script>
 </body>
 </html>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Contact</title>
+<title>Contact — KIM HANEUL</title>
 <meta name="description" content="연락처와 문의 폼">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
@@ -53,10 +53,9 @@
   .form-msg.err { color: var(--accent); }
 </style>
 </head>
-<body data-page="contact">
+<body data-page="contact" data-title="Contact">
   <main>
-    <p class="kicker">Contact</p>
-    <h1 class="page-title">Say hello</h1>
+    <h1 class="page-title">Contact</h1>
     <p class="status" id="status"></p>
 
     <div class="layout">
@@ -80,6 +79,7 @@
             <select name="type" required>
               <option value="collab">협업</option>
               <option value="commission">외주</option>
+              <option value="exhibition">전시</option>
               <option value="etc">기타</option>
             </select>
           </label>
@@ -96,7 +96,7 @@
   <script>
   document.getElementById("status").textContent = SITE.status;
   document.getElementById("sns").innerHTML =
-    `<li><a class="btn" href="${esc(SITE.instagram)}" target="_blank" rel="noopener">${esc(SITE.instagramLabel)} ↗</a></li>`;
+    SITE.sns.map((s) => `<li><a class="btn" href="${esc(s.href)}" target="_blank" rel="noopener">${esc(s.label)} ↗</a></li>`).join("");
 
   // 이메일: 클릭하면 주소 복사 + 메일 앱 열기
   const emailBtn = document.getElementById("email");
