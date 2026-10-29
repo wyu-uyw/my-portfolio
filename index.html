@@ -473,8 +473,8 @@
       segmentLength: 14,     // 마디 간격(px), 화면 높이에 따라 비례 조정. 마디 반지름 = 간격의 절반 → 틈 없음
       stiffness: 1,          // 마디 연결 강성
       damping: 0.1,          // 흔들림 감쇠
-      anchorStiffness: 0.5,  // 천장 고정점 강성 — 높을수록 줄이 늘어나지 않음 (낮으면 고무줄처럼 튐)
-      anchorDamping: 0.2,    // 천장 고정점 감쇠
+      anchorStiffness: 0.04, // 천장 고정점 스프링 강성 — 낮을수록 당길 때 줄이 잘 늘어남
+      anchorDamping: 0.35,   // 천장 고정점 감쇠 — 늘어났다 돌아올 때 통통 튀지 않게
       width: 1.25,           // 그리는 두께(px)
     },
     glass: {
@@ -654,9 +654,11 @@
     shear: 0.9,            // 전단(대각선) 강성 — 구조(상하좌우)는 1
     bend: 0.08,            // 굽힘(한 칸 건너뛰기) 강성 — 낮을수록 얇고 부드럽게 휨
     weight: 0.02,          // 천 무게가 각 줄 끝을 아래로 당기는 힘 (Matter 힘 단위)
-    tug: 0.0015,           // 천이 닿을 수 있는 거리보다 더 당긴 만큼 줄 끝을 끌어오는 정도
+    tug: 0.004,            // 천이 닿을 수 있는 거리보다 더 당긴 만큼 줄 끝을 끌어오는 정도
     slack: 1.04,           // 잡은 점 여유 — 매듭에서 반듯할 때 거리의 이만큼까지만 끌려옴 (1 = 전혀 안 늘어남)
     tether: 1.12,          // 나머지 점 묶음 여유 — 크게 늘어나 고무처럼 튕기는 것만 막는다
+    restore: 0.005,        // 복원력: 서브스텝마다 반듯하게 걸린 자리로 다가가는 비율 (손 뗀 뒤 ~1초에 펴짐)
+    restoreHeld: 0.0006,   // 잡고 있는 동안의 복원력 (만지는 걸 방해하지 않게 약하게)
     grabFollow: 0.35,      // 잡은 점이 포인터를 따라가는 정도 (서브스텝마다)
     jitter: 0.6,           // 처음 z 흔들림(px) — 평면에만 머물지 않고 앞뒤로 접힐 수 있게
     ballDepth: 0.5,        // 구슬 중심을 천보다 (반지름 × 이만큼) 앞에 둔다 → 닿으면 천이 구슬 뒤로 밀림
@@ -844,14 +846,17 @@
     gl.scene.add(mesh);
 
     // 각 점이 두 매듭(윗변 양 끝)에서 반듯할 때 떨어진 거리 — 묶음(tether) 한계
-    const reach = new Float32Array(n * 2);
+    // home: 반듯하게 걸렸을 때 왼쪽 매듭 기준 (윗변 방향 거리, 아래 방향 거리) — 복원력의 목표
+    const reach = new Float32Array(n * 2), home = new Float32Array(n * 2);
     for (let j = 0; j < ny; j++) {
       for (let i = 0; i < nx; i++) {
         reach[(j * nx + i) * 2] = Math.hypot(i * dx, j * dy);
         reach[(j * nx + i) * 2 + 1] = Math.hypot((nx - 1 - i) * dx, j * dy);
+        home[(j * nx + i) * 2] = i * dx;
+        home[(j * nx + i) * 2 + 1] = j * dy;
       }
     }
-    const cloth = { nx, ny, n, pos, prev: pos.slice(), invM, pins, reach, cons: Float32Array.from(cons), tug: new Float32Array(4), geom, gpos, mat, mesh, tex, image: false };
+    const cloth = { nx, ny, n, pos, prev: pos.slice(), invM, pins, reach, home, cons: Float32Array.from(cons), tug: new Float32Array(4), geom, gpos, mat, mesh, tex, image: false };
     updateClothMesh(cloth);
     return cloth;
   }
@@ -945,6 +950,28 @@
           const f = lim / Math.sqrt(d2);
           pos[k] = pos[kp] + ex * f; pos[k + 1] = pos[kp + 1] + ey * f; pos[k + 2] = pos[kp + 2] + ez * f;
         }
+      }
+    }
+
+    // 복원력: 모든 점이 "두 매듭에 반듯하게 걸린 자리"(윗변 = 두 매듭을 잇는 선, 그 수직 아래로 펼쳐짐)로 다가간다.
+    // pos와 prev를 함께 옮겨 속도를 만들지 않으므로, 출렁이며 오가지 않고 스르륵 펴진다. 잡는 동안은 아주 약하게.
+    {
+      const kL = pins[0] * 3, kR = pins[1] * 3;
+      const lx = pos[kL], ly = pos[kL + 1];
+      let ux = pos[kR] - lx, uy = pos[kR + 1] - ly;
+      const ul = Math.hypot(ux, uy) || 1;
+      ux /= ul; uy /= ul;
+      const vx = -uy, vy = ux;                    // 윗변에 수직, 아래쪽
+      const k = grab && grab.hang === hang ? CLOTH.restoreHeld : CLOTH.restore;
+      const home = c.home;
+      for (let p = 0, q = 0; p < c.n; p++, q += 3) {
+        if (!invM[p]) continue;
+        const a = home[p * 2], b = home[p * 2 + 1];
+        const mx = (lx + ux * a + vx * b - pos[q]) * k;
+        const my = (ly + uy * a + vy * b - pos[q + 1]) * k;
+        const mz = -pos[q + 2] * k;
+        pos[q] += mx; pos[q + 1] += my; pos[q + 2] += mz;
+        prev[q] += mx; prev[q + 1] += my; prev[q + 2] += mz;
       }
     }
 
