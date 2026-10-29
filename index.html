@@ -472,9 +472,9 @@
     rope: {
       segmentLength: 14,     // 마디 간격(px), 화면 높이에 따라 비례 조정. 마디 반지름 = 간격의 절반 → 틈 없음
       stiffness: 1,          // 마디 연결 강성
-      damping: 0.1,          // 흔들림 감쇠
-      anchorStiffness: 0.04, // 천장 고정점 스프링 강성 — 낮을수록 당길 때 줄이 잘 늘어남
-      anchorDamping: 0.35,   // 천장 고정점 감쇠 — 늘어났다 돌아올 때 통통 튀지 않게
+      damping: 0.05,         // 흔들림 감쇠
+      anchorStiffness: 0.03, // 천장 고정점 스프링 강성 — 낮을수록 당길 때 줄이 잘 늘어남
+      anchorDamping: 0.08,   // 천장 고정점 감쇠
       width: 1.25,           // 그리는 두께(px)
     },
     glass: {
@@ -654,8 +654,7 @@
     shear: 0.9,            // 전단(대각선) 강성 — 구조(상하좌우)는 1
     bend: 0.08,            // 굽힘(한 칸 건너뛰기) 강성 — 낮을수록 얇고 부드럽게 휨
     weight: 0.02,          // 천 무게가 각 줄 끝을 아래로 당기는 힘 (Matter 힘 단위)
-    tug: 0.004,            // 천이 닿을 수 있는 거리보다 더 당긴 만큼 줄 끝을 끌어오는 정도
-    slack: 1.04,           // 잡은 점 여유 — 매듭에서 반듯할 때 거리의 이만큼까지만 끌려옴 (1 = 전혀 안 늘어남)
+    tug: 0.002,            // 천이 늘어난 만큼 줄 끝을 끌어당기는 정도 → 천을 당기면 줄도 따라 늘어남
     tether: 1.12,          // 나머지 점 묶음 여유 — 크게 늘어나 고무처럼 튕기는 것만 막는다
     restore: 0.005,        // 복원력: 서브스텝마다 반듯하게 걸린 자리로 다가가는 비율 (손 뗀 뒤 ~1초에 펴짐)
     restoreHeld: 0.0006,   // 잡고 있는 동안의 복원력 (만지는 걸 방해하지 않게 약하게)
@@ -903,29 +902,17 @@
       }
     };
     pinTo();
-    // 손으로 잡은 점: 포인터 쪽으로 따라가고(조금 앞으로 들림), 제약에서는 고정점처럼 다룬다.
-    // 천은 늘어나지 않으므로 잡은 점은 매듭에서 원래 거리까지만 갈 수 있다. 그보다 멀리 당긴 만큼은
-    // 천 대신 줄 끝을 끌어온다 (tug → weighRopes가 줄 끝에 힘으로 전달)
-    const tug = c.tug.fill(0);
-    if (grab && grab.hang === hang) {
-      const p = grab.particle, k = p * 3;
-      let tx = grab.x, ty = grab.y;
-      for (let pass = 0; pass < 2; pass++) {
-        for (let s = 0; s < 2; s++) {
-          const e = hang.ropes[s].end.position;
-          const lim = c.reach[p * 2 + s] * CLOTH.slack;
-          const dx = tx - e.x, dy = ty - e.y, d = Math.hypot(dx, dy);
-          if (d <= lim) continue;
-          if (!pass) { tug[s * 2] += dx * (1 - lim / d); tug[s * 2 + 1] += dy * (1 - lim / d); }
-          tx = e.x + (dx * lim) / d;
-          ty = e.y + (dy * lim) / d;
-        }
-      }
+    // 손으로 잡은 점: 포인터 쪽으로 따라가고(조금 앞으로 들림), 제약에서는 고정점처럼 다룬다
+    const held = grab && grab.hang === hang;
+    if (held) {
+      const k = grab.particle * 3;
       prev[k] = pos[k]; prev[k + 1] = pos[k + 1]; prev[k + 2] = pos[k + 2];
-      pos[k] += (tx - pos[k]) * CLOTH.grabFollow;
-      pos[k + 1] += (ty - pos[k + 1]) * CLOTH.grabFollow;
+      pos[k] += (grab.x - pos[k]) * CLOTH.grabFollow;
+      pos[k + 1] += (grab.y - pos[k + 1]) * CLOTH.grabFollow;
       pos[k + 2] += (12 - pos[k + 2]) * CLOTH.grabFollow;
     }
+    // 줄 끝 매듭이 천에 끌려가는 양 (늘어난 제약의 장력 합) → weighRopes가 줄 끝에 힘으로 전달
+    const tug = c.tug.fill(0);
     for (let it = 0; it < CLOTH.iterations; it++) {
       for (let q = 0; q < cons.length; q += 4) {
         const p1 = cons[q], p2 = cons[q + 1];
@@ -934,11 +921,19 @@
         const k1 = p1 * 3, k2 = p2 * 3;
         const ex = pos[k2] - pos[k1], ey = pos[k2 + 1] - pos[k1 + 1], ez = pos[k2 + 2] - pos[k1 + 2];
         const dist = Math.sqrt(ex * ex + ey * ey + ez * ez) || 1e-6;
-        const s = ((dist - cons[q + 2]) / (dist * ws)) * cons[q + 3];
+        const stretch = (dist - cons[q + 2]) / dist;
+        if (stretch > 0 && !(w1 && w2)) {
+          const pin = !w1 ? p1 : p2, sign = !w1 ? 1 : -1;
+          const slot = pin === pins[0] ? 0 : pin === pins[1] ? 2 : -1;
+          if (slot >= 0) { tug[slot] += ex * stretch * sign; tug[slot + 1] += ey * stretch * sign; }
+        }
+        const s = (stretch / ws) * cons[q + 3];
         pos[k1] += ex * s * w1; pos[k1 + 1] += ey * s * w1; pos[k1 + 2] += ez * s * w1;
         pos[k2] -= ex * s * w2; pos[k2 + 1] -= ey * s * w2; pos[k2 + 2] -= ez * s * w2;
       }
-      // 묶음(tether): 어느 점도 두 매듭에서 반듯할 때 거리의 tether배보다 멀어지지 못한다 → 크게 늘었다 튕기는 고무 느낌 방지
+      // 묶음(tether, 손을 뗀 뒤에만): 어느 점도 두 매듭에서 반듯할 때 거리의 tether배보다 멀어지지 못한다.
+      // 잡는 동안에는 천이 늘어나며 줄을 끌어당기고, 놓으면 늘어난 만큼을 속도 없이(pos · prev 함께) 거둬들여 휙 튕기지 않는다.
+      if (held) continue;
       for (let p = 0, k = 0; p < c.n; p++, k += 3) {
         if (!invM[p]) continue;
         for (let s = 0; s < 2; s++) {
@@ -947,8 +942,9 @@
           const lim = c.reach[p * 2 + s] * CLOTH.tether;
           const d2 = ex * ex + ey * ey + ez * ez;
           if (d2 <= lim * lim) continue;
-          const f = lim / Math.sqrt(d2);
-          pos[k] = pos[kp] + ex * f; pos[k + 1] = pos[kp + 1] + ey * f; pos[k + 2] = pos[kp + 2] + ez * f;
+          const f = 1 - lim / Math.sqrt(d2);
+          pos[k] -= ex * f; pos[k + 1] -= ey * f; pos[k + 2] -= ez * f;
+          prev[k] -= ex * f; prev[k + 1] -= ey * f; prev[k + 2] -= ez * f;
         }
       }
     }
