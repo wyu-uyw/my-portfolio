@@ -65,11 +65,11 @@ body.admin { display: block; min-height: 100vh; animation: none; }
   text-decoration: none;
   white-space: nowrap;
 }
-.ad-btn:hover { background: var(--accent); border-color: var(--accent); color: #151515; }
+.ad-btn:hover { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .ad-btn.ghost { background: transparent; color: var(--text); border-color: var(--line-strong); }
 .ad-btn.ghost:hover { border-color: var(--text); background: transparent; color: var(--text); }
 .ad-btn.danger { background: transparent; color: var(--text); border-color: var(--line-strong); }
-.ad-btn.danger:hover { border-color: #ff8a80; color: #ff8a80; background: transparent; }
+.ad-btn.danger:hover { border-color: var(--danger); color: var(--danger); background: transparent; }
 .ad-btn.small { font-size: 12.5px; padding: 6px 12px; }
 .ad-btn:disabled { opacity: 0.4; pointer-events: none; }
 .icon-btn {
@@ -121,7 +121,7 @@ body.admin { display: block; min-height: 100vh; animation: none; }
 }
 .f textarea { min-height: 120px; resize: vertical; line-height: 1.7; }
 .f textarea.tall { min-height: 280px; }
-.f select option { color: #111; }
+.f select option { color: #111; }   /* OS 기본 드롭다운(흰 바탕) 안의 글자 */
 .f input:focus, .f select:focus, .f textarea:focus { outline: none; border-color: var(--accent); }
 .f input:read-only { opacity: 0.6; }
 .row2 { display: grid; gap: 22px; }
@@ -215,7 +215,7 @@ body.admin { display: block; min-height: 100vh; animation: none; }
   transition: opacity 0.25s, transform 0.25s;
 }
 .ad-toast.show { opacity: 1; transform: translate(-50%, 0); }
-.ad-toast.err { background: #ff8a80; color: #151515; }
+.ad-toast.err { background: var(--danger); color: var(--on-danger); }
 
 /* 입장 전 로그인 */
 .ad-gate { display: grid; place-items: center; min-height: calc(100vh - 120px); padding: 24px var(--gutter); }

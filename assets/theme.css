@@ -1,0 +1,94 @@
+/* ==================================================================
+   배색 프리셋 — 메인 · 하위 페이지 · 관리 페이지가 함께 읽는 색 토큰
+   요소의 색은 모두 여기 토큰만 읽는다. 프리셋은 <html data-theme="…">로 바뀌고
+   (assets/theme.js가 그리기 전에 적용), 기본(Blue)은 속성 없음.
+   프리셋마다 바탕 몇 가지만 정하고, 나머지는 아래 파생 토큰이 따라온다.
+   ================================================================== */
+:root {
+  /* --- 프리셋이 정하는 값 (기본: Blue) --- */
+  --bg: #0356fc;
+  --bg-dark: #0238a8;                       /* 화면 가장자리 비네팅 */
+  --text: #ffffff;
+  --accent: #fcad03;                        /* 포인트: 당김 임계값 · 현재 메뉴 · 호버 */
+  --on-accent: #151515;                     /* 포인트 색 위의 글자 */
+  --danger: #ff8a80;
+  --on-danger: #151515;
+  --glass-tint: rgba(255, 255, 255, 0.12);
+  --glass-border: rgba(255, 255, 255, 0.6);
+  --glass-border-held: rgba(255, 255, 255, 0.8);
+  --glass-shadow: color-mix(in srgb, var(--bg-dark) 45%, transparent);
+  --name-stroke: var(--accent);             /* 메인 이름 외곽선 */
+  --soft: 72%;                              /* 보조 글자 진하기 */
+  --fill-a: 6%;                             /* 면 채움 진하기 */
+  --grid-a: 12%;                            /* 평소 + 격자 진하기 */
+
+  /* --- 파생 토큰 (글자색 · 바탕색에서 자동으로) --- */
+  --text-soft: color-mix(in srgb, var(--text) var(--soft), transparent);
+  --text-faint: color-mix(in srgb, var(--text) 50%, transparent);
+  --line: color-mix(in srgb, var(--text) 22%, transparent);          /* 구분선 · 테두리 */
+  --line-strong: color-mix(in srgb, var(--text) 50%, transparent);
+  --fill: color-mix(in srgb, var(--text) var(--fill-a), transparent);
+  --plus-dim: color-mix(in srgb, var(--text) var(--grid-a), transparent);   /* 평소 + 격자 */
+  --plus-bright: color-mix(in srgb, var(--text) 95%, transparent);          /* 구슬 근처 + 격자 */
+  --overlay-bg: color-mix(in srgb, var(--bg) 80%, transparent);
+  --stitch: var(--text);                                              /* 자수 방명록 실 · X 스티치 무늬 */
+  --lever: var(--text);
+  --clothesline: color-mix(in srgb, var(--text) 50%, transparent);   /* 빨랫줄 */
+  --rope: var(--clothesline);
+  --pin: var(--text);                                                 /* 집게 */
+  --cloth-shadow: rgba(0, 0, 0, 0.22);                                /* 천 그림자 */
+}
+
+/* 반전 배색: 흰 배경 + 파란 글자 (기존 White) */
+:root[data-theme="white"] {
+  --bg: #ffffff;
+  --bg-dark: #d9e3fb;
+  --text: #0356fc;
+  --glass-tint: rgba(3, 86, 252, 0.05);
+  --glass-border: rgba(3, 86, 252, 0.45);
+  --glass-border-held: rgba(3, 86, 252, 0.6);
+  --glass-shadow: rgba(3, 56, 168, 0.28);
+  --name-stroke: #ffffff;
+  --fill-a: 4%;
+  --grid-a: 14%;
+  --cloth-shadow: rgba(3, 56, 168, 0.18);
+}
+
+/* 작품 사진이 돋보이는 중성 배경 (제작 중 비교용) — 밝은 배경에선 노랑 대비가 낮아 포인트를 블루로 */
+:root[data-theme="linen"],
+:root[data-theme="greige"],
+:root[data-theme="gallery"] {
+  --text: #1c1c1a;
+  --accent: #0356fc;
+  --on-accent: #ffffff;
+  --danger: #c62828;
+  --on-danger: #ffffff;
+  --glass-tint: rgba(255, 255, 255, 0.06);
+  --glass-border: rgba(0, 0, 0, 0.12);
+  --glass-border-held: rgba(0, 0, 0, 0.2);
+  --glass-shadow: rgba(0, 0, 0, 0.15);
+  --name-stroke: var(--bg);
+  --soft: 66%;
+  --fill-a: 4%;
+  --grid-a: 13%;
+  --plus-bright: color-mix(in srgb, var(--text) 80%, transparent);
+  --clothesline: color-mix(in srgb, var(--text) 45%, transparent);
+  --cloth-shadow: rgba(0, 0, 0, 0.14);
+}
+:root[data-theme="linen"]   { --bg: #f2efe8; --bg-dark: #dcd6ca; }
+:root[data-theme="greige"]  { --bg: #d8d4cc; --bg-dark: #bfbab0; --glass-tint: rgba(255, 255, 255, 0.1); }
+:root[data-theme="gallery"] { --bg: #fafafa; --bg-dark: #e4e4e4; --text: #111111; }
+
+/* 어두운 전시장 */
+:root[data-theme="charcoal"] {
+  --bg: #1e1e1e;
+  --bg-dark: #0e0e0e;
+  --text: #ece8df;
+  --glass-tint: rgba(255, 255, 255, 0.06);
+  --glass-border: rgba(236, 232, 223, 0.35);
+  --glass-border-held: rgba(236, 232, 223, 0.55);
+  --glass-shadow: rgba(0, 0, 0, 0.5);
+  --grid-a: 10%;
+  --clothesline: color-mix(in srgb, var(--text) 40%, transparent);
+  --cloth-shadow: rgba(0, 0, 0, 0.45);
+}

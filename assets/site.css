@@ -1,39 +1,18 @@
 /* ==================================================================
    하위 페이지 공통 스타일 — 메인(index.html)과 같은 디자인 언어
-   파란 배경 · 흰 글자 · Pretendard 300 · 미세한 + 격자
+   Pretendard 300 · 미세한 + 격자. 색은 assets/theme.css의 프리셋 토큰만 읽는다.
    ================================================================== */
 :root {
-  --bg: #0356fc;
-  --bg-dark: #0238a8;
-  --text: #ffffff;
-  --text-soft: rgba(255, 255, 255, 0.72);
-  --text-faint: rgba(255, 255, 255, 0.5);
-  --line: rgba(255, 255, 255, 0.22);
-  --line-strong: rgba(255, 255, 255, 0.5);
-  --fill: rgba(255, 255, 255, 0.06);
-  --plus-dim: rgba(255, 255, 255, 0.12);
-  --accent: #fcad03;
   --font: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --grid: 24px;
   --plus-tile: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Cpath d='M12.5 9v7M9 12.5h7' stroke='%23000' stroke-width='1'/%3E%3C/svg%3E");
+  /* X 스티치 무늬 모양 (색은 --stitch를 마스크로 칠한다) */
+  --x-tile: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Cpath d='M8 16L16 8M8 8l8 8' stroke='%23000' stroke-width='1.2' stroke-linecap='round'/%3E%3C/svg%3E");
   --gutter: 16px;
   --max: 1120px;
 }
 @media (min-width: 720px) {
   :root { --gutter: 32px; }
-}
-/* 반전 배색: 흰 배경 + 파란 글자 (푸터 버튼 / 메인 우측 상단 버튼으로 전환) */
-:root[data-theme="inverse"] {
-  --bg: #ffffff;
-  --bg-dark: #d9e3fb;
-  --text: #0356fc;
-  --text-soft: rgba(3, 86, 252, 0.72);
-  --text-faint: rgba(3, 86, 252, 0.5);
-  --line: rgba(3, 86, 252, 0.22);
-  --line-strong: rgba(3, 86, 252, 0.5);
-  --fill: rgba(3, 86, 252, 0.04);
-  --plus-dim: rgba(3, 86, 252, 0.14);
-  --ph-stitch: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Cpath d='M8 16L16 8M8 8l8 8' stroke='rgba(3,86,252,0.35)' stroke-width='1.2' stroke-linecap='round'/%3E%3C/svg%3E");
 }
 
 * { box-sizing: border-box; }
@@ -172,9 +151,17 @@ h2.section-title {
   aspect-ratio: var(--ratio, 4 / 5);
   border: 1px solid var(--line);
   background-color: var(--fill);
-  background-image: var(--ph-stitch, url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Cpath d='M8 16L16 8M8 8l8 8' stroke='rgba(255,255,255,0.35)' stroke-width='1.2' stroke-linecap='round'/%3E%3C/svg%3E"));
-  background-size: 24px 24px;
   overflow: hidden;
+}
+.ph::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--stitch) 35%, transparent);
+  -webkit-mask-image: var(--x-tile);
+  mask-image: var(--x-tile);
+  -webkit-mask-size: 24px 24px;
+  mask-size: 24px 24px;
 }
 .ph span {
   position: absolute;
