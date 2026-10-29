@@ -656,7 +656,8 @@
     weight: 0.02,          // 천 무게가 각 줄 끝을 아래로 당기는 힘 (Matter 힘 단위)
     tug: 0.002,            // 천이 늘어난 만큼 줄 끝을 끌어당기는 정도 → 천을 당기면 줄도 따라 늘어남
     tether: 1.12,          // 나머지 점 묶음 여유 — 크게 늘어나 고무처럼 튕기는 것만 막는다
-    restore: 0.005,        // 복원력: 서브스텝마다 반듯하게 걸린 자리로 다가가는 비율 (손 뗀 뒤 ~1초에 펴짐)
+    restore: 0.012,        // 복원력: 손 뗀 뒤 서브스텝마다 반듯하게 걸린 자리로 다가가는 비율
+    gravityFree: 0.3,      // 손 뗀 뒤 중력 배율 — 접힌 자락이 중력에 눌려 처진 채 남지 않고 복원력에 끝까지 펴지게
     restoreHeld: 0.0006,   // 잡고 있는 동안의 복원력 (만지는 걸 방해하지 않게 약하게)
     grabFollow: 0.35,      // 잡은 점이 포인터를 따라가는 정도 (서브스텝마다)
     jitter: 0.6,           // 처음 z 흔들림(px) — 평면에만 머물지 않고 앞뒤로 접힐 수 있게
@@ -882,7 +883,8 @@
   function stepCloth(hang, dtSec) {
     const c = hang.cloth;
     const { pos, prev, invM, cons, pins } = c;
-    const g = CLOTH.gravity * dtSec * dtSec;
+    const held = grab && grab.hang === hang;
+    const g = CLOTH.gravity * (held ? 1 : CLOTH.gravityFree) * dtSec * dtSec;
     const keep = 1 - CLOTH.damping;
     for (let p = 0, k = 0; p < c.n; p++, k += 3) {
       if (!invM[p]) continue;
@@ -903,7 +905,6 @@
     };
     pinTo();
     // 손으로 잡은 점: 포인터 쪽으로 따라가고(조금 앞으로 들림), 제약에서는 고정점처럼 다룬다
-    const held = grab && grab.hang === hang;
     if (held) {
       const k = grab.particle * 3;
       prev[k] = pos[k]; prev[k + 1] = pos[k + 1]; prev[k + 2] = pos[k + 2];
@@ -958,7 +959,7 @@
       const ul = Math.hypot(ux, uy) || 1;
       ux /= ul; uy /= ul;
       const vx = -uy, vy = ux;                    // 윗변에 수직, 아래쪽
-      const k = grab && grab.hang === hang ? CLOTH.restoreHeld : CLOTH.restore;
+      const k = held ? CLOTH.restoreHeld : CLOTH.restore;
       const home = c.home;
       for (let p = 0, q = 0; p < c.n; p++, q += 3) {
         if (!invM[p]) continue;
