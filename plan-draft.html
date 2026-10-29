@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>plan-draft</title>
-<meta name="description" content="포트폴리오 메인 인덱스 화면 구현 기획서 (임시)">
+<meta name="description" content="포트폴리오 기획서 · 기능정의서 (임시)">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Noto+Sans+KR:wght@400;600;700&display=swap" rel="stylesheet">
@@ -136,6 +136,10 @@
   .doc .part-label + h1 { margin-top: 0.2em; }
   .doc .lead { font-size: 17px; color: var(--ink-soft); margin-top: -0.2em; }
   .doc h3 { font-size: 17px; margin: 1.6em 0 0.4em; }
+  .doc h4 { font-size: 15px; margin: 1.4em 0 0.3em; color: var(--ink-soft); }
+  .doc a { color: var(--ink); text-underline-offset: 3px; }
+  .doc .toc { font-size: 14.5px; color: var(--ink-soft); }
+  .doc .toc a { font-weight: 700; }
   .doc .note {
     margin: 1.2em 0;
     padding: 14px 16px;
@@ -193,16 +197,20 @@
     <article class="doc">
 <h1>my-portfolio</h1>
 
-<p class="part-label">사이트 기획서</p>
-<h1>내 작업물을 쌓아가는 개인 포트폴리오</h1>
-<p class="lead">작업물을 계속 업로드하며 쌓아가는 개인 포트폴리오 웹사이트. 첫 번째 프로젝트인 졸업 전시 출품작 소개부터 시작한다.</p>
+<p class="toc"><a href="#plan">사이트 기획서</a> — 무엇을, 왜, 누구에게 · <a href="#spec">기능정의서</a> — 화면마다 어떻게 동작하는지</p>
 
 <div class="note">초안입니다. <span class="tag">미정</span> 표시가 붙은 항목은 아직 정하지 않은 것이고, 확정되면 표시를 지웁니다.<br>화면 UI/UX와 구현 지침(인터랙션, 컬러, 폰트, 배경 패턴 등)은 저장소의 <code>README.md</code>에 정리되어 있습니다.</div>
+
+<!-- ============================== 사이트 기획서 ============================== -->
+
+<p class="part-label" id="plan">PART 1 · 사이트 기획서</p>
+<h1>내 작업물을 쌓아가는 개인 포트폴리오</h1>
+<p class="lead">작업물을 계속 업로드하며 쌓아가는 개인 포트폴리오 웹사이트. 첫 번째 프로젝트인 졸업 전시 출품작 소개부터 시작한다.</p>
 
 <h2>01. 기획 배경</h2>
 <p>졸업 전시에서는 작품만 놓여 있어서, 무엇을 왜 만들었고 어떤 과정을 거쳤는지까지 전하기 어렵다. 그 맥락을 웹에서 보충하고, 결과물보다 문제를 바라보고 풀어가는 '작업자'로서의 나를 보여주고 싶다. 졸업 전시를 첫 프로젝트로 시작하지만, 궁극적으로는 새 작업이 생길 때마다 업로드해 작업 이력이 쌓이는 개인 포트폴리오로 계속 쓰려고 한다. 사이트 자체도 줄을 당겨 메뉴를 여는 물리 인터랙션으로 만들어, 첫 화면에서부터 구현 역량이 드러나게 한다.</p>
 
-<h2>01-1. 리서치 — 아티스트 포트폴리오는 어떻게 생겼나</h2>
+<h2>02. 리서치 — 아티스트 포트폴리오는 어떻게 생겼나</h2>
 <p>일반적인 아티스트 포트폴리오 구성과 텍스타일 작가 사례를 찾아본 결과, 업계에는 갤러리 웹사이트와 비슷한 <strong>표준 구조</strong>가 뚜렷했다. 이 구조를 따르면 갤러리 디렉터·컬렉터가 "전문적으로 활동하는 작가"로 읽는다. 하위 페이지 사이트 지도 v2는 이 리서치를 근거로 만들었다.</p>
 
 <h3>업계 기본 틀</h3>
@@ -248,7 +256,7 @@
 </table>
 </div>
 
-<h2>02. 누가 보나요</h2>
+<h2>03. 누가 보나요</h2>
 <div class="table-wrap">
 <table>
 <thead><tr><th>보는 사람</th><th>보여주고 싶은 것</th></tr></thead>
@@ -261,7 +269,7 @@
 </div>
 <p>졸업 전시 시기에는 <strong>관람객</strong>, 졸업 이후에는 <strong>채용 담당자</strong>가 가장 우선하는 독자다.</p>
 
-<h2>03. 디자인 방향</h2>
+<h2>04. 디자인 방향</h2>
 <ul>
 <li><strong>사이트명</strong> — 임시로 <code>PORTFOLIO</code> <span class="tag">미정</span></li>
 <li><strong>메인 컬러</strong> — 3가지
@@ -271,18 +279,18 @@
     <span class="sw"><i style="background:#fcad03"></i>포인트 옐로 <code>#fcad03</code></span>
   </div>
   파란 바탕에 흰 글자, 줄을 끝까지 당겼을 때만 노란색으로 바뀌는 피드백. 폰트는 Pretendard.</li>
-<li><strong>배색 전환</strong> — 버튼 하나로 블루와 화이트의 자리를 바꿔 볼 수 있다.
+<li><strong>배색 전환</strong> — 블루와 화이트의 자리를 바꿔 볼 수 있는 두 가지 배색.
   <div class="swatches">
     <span class="sw"><i style="background:#0356fc"></i>기본 · 파란 배경 + 흰 글자</span>
     <span class="sw"><i style="background:#ffffff"></i>반전 · 흰 배경 + 파란 글자</span>
-  </div>
-  메인은 우측 상단, 하위 페이지는 푸터에 버튼이 있고, 고른 배색은 브라우저에 기억되어 모든 페이지에 이어진다. 포인트 옐로는 두 배색 모두 그대로 쓰고, 반전 배색에서는 메인 이름 외곽선만 흰색으로 바꾼다.</li>
+  </div></li>
 <li><strong>메뉴 구성</strong> — WORK(컬렉션·스와치) / JOURNAL(작업 일지) / ABOUT(Bio·Statement·CV) / CONTACT(연락하기). 천장에 매달린 줄 끝의 세로 글자로 표시하고, 줄을 당겼다 놓으면 열린다.</li>
-<li><strong>회전 레버 → 사이트맵</strong> — 메인 왼쪽 세로 중앙에 흰 직선 하나로 된 레버. 일정 각도 이상 돌리면 '탁' 넘어가면서 화면이 레버 끝을 축으로 함께 돌고, 뒷면의 사이트맵이 올라온다. 중간에 멈춰 둘 수 없다. 상단의 PORTFOLIO 글자와 White/Blue · plan-draft 버튼은 제자리에 남는다.</li>
+<li><strong>회전 레버 → 사이트맵</strong> — 메인 왼쪽의 흰 직선 레버를 돌리면 화면이 함께 돌며 뒷면의 사이트맵이 올라온다.</li>
+<li><strong>하위 페이지 원칙</strong> — 작품 이미지가 주인공. 메인의 물리·유리 효과는 쓰지 않고, 여백을 넉넉하게 둔다.</li>
 <li><strong>참고 사이트</strong> — Day4에서 고른 스타일 <span class="tag">미정</span></li>
 </ul>
 
-<h2>04. 핵심 기능</h2>
+<h2>05. 핵심 기능</h2>
 <h3>꼭 필요한 것</h3>
 <ol>
 <li><strong>줄 당기기 메뉴 + 유리구슬 메인 화면</strong> — 줄을 당겨 메뉴를 열고, 유리구슬을 잡아 던질 수 있는 물리 인터랙션. 모바일 터치에서도 동일하게 동작. 왼쪽 레버를 돌리면 화면이 회전하며 사이트맵으로 바뀐다.</li>
@@ -291,21 +299,21 @@
 </ol>
 <h3>나중에 되면 좋은 것</h3>
 <ol start="4">
-<li><strong>작업물 업로드</strong> — 코드를 고치지 않고 Supabase에 프로젝트 데이터만 추가하면 사이트에 올라가게.</li>
+<li><strong>작업물 업로드</strong> — 코드를 고치지 않고 Supabase에 프로젝트 데이터만 추가하면 사이트에 올라가게. → 관리 페이지로 진행 중 (07)</li>
 <li><strong>작업물 거르기</strong> — 작업이 쌓이면 연도·분야별 필터, 습작용 짧은 카드.</li>
 </ol>
 
-<h2>05. 필요한 화면</h2>
-<p>총 <strong>8개</strong> — 메인 1 + 하위 페이지 7. <span class="tag">사이트 지도 v2</span></p>
+<h2>06. 필요한 화면</h2>
+<p>총 <strong>8개</strong> — 메인 1 + 하위 페이지 7. <span class="tag">사이트 지도 v2</span> 화면마다의 동작은 <a href="#spec">기능정의서</a>에 있다.</p>
 <h3>사이트 지도</h3>
-<pre><code>메인 ─ 줄 메뉴 4개 · 유리구슬 · 자수 방명록 (변경 없음)
-├─ Work ─ 탭 Collections / Swatch · 기법 필터(Weave/Print/Stitch/Dye/Manipulation)
-│   ├─ 컬렉션 ─ 소개(컨셉 2~3문단) · 포함 작품 · 이전/다음 컬렉션
-│   └─ 작품 ─ 대표 이미지 · 정보 · 소재 · 설명 · 제작 과정(손 작업 필수) · 갤러리
-├─ Journal ─ 카테고리 필터 · 날짜가 눈에 띄는 목록
-│   └─ 글 ─ 본문 · 관련 작품/컬렉션 · 이전/다음
-├─ About ─ Bio · Statement · CV (앵커 이동, 전화번호 제외)
-└─ Contact ─ 이메일 복사 · SNS · 문의 폼(협업/외주/전시/기타) · 현재 상태</code></pre>
+<pre><code>메인 ─ 줄 메뉴 4개 · 유리구슬 · 자수 방명록 · 회전 레버 → 사이트맵
+├─ Work ─ 컬렉션(시리즈) / 스와치 · 기법별로 거르기
+│   ├─ 컬렉션 ─ 시리즈 소개 · 포함 작품
+│   └─ 작품 ─ 작품 소개 · 제작 과정(손 작업 필수) · 갤러리
+├─ Journal ─ 작업 일지 목록
+│   └─ 글 ─ 본문 · 관련 작품/컬렉션
+├─ About ─ Bio · Statement · CV
+└─ Contact ─ 연락처 · 문의 폼</code></pre>
 <div class="table-wrap">
 <table>
 <thead><tr><th>화면</th><th>담당 기능</th><th>상태</th></tr></thead>
@@ -321,20 +329,65 @@
 </tbody>
 </table>
 </div>
-<p><strong>공통</strong> — 파란 배경 · 흰 글자 · dim + 격자 / 좌상단 이름(로고) → 메인 · 우상단 고정 메뉴 / 하단 푸터에 이메일 · SNS · © 상시 노출 / 탭 제목 "페이지명 — 이름".</p>
-<p><strong>원칙</strong> — 하위 페이지는 작품 이미지가 주인공. 메인의 물리·유리 효과는 없고, 이미지 페이드인 · 호버 살짝 확대 · 라이트박스만 쓴다. 컬렉션은 한 줄 2~3개, 여백 넉넉하게.</p>
-<p><strong>데이터</strong> — 컬렉션 · 작품 · 저널 · CV · 문의 · 자수는 Supabase 테이블, 이미지는 Storage <code>portfolio</code> 버킷. 공개 표시(<code>is_public</code>)한 것만 사이트에 보임. 테이블 만드는 SQL은 <code>supabase/schema.sql</code> (SQL Editor에서 직접 실행).</p>
 <p><strong>제작 순서</strong> — 공통 레이아웃 → Work(컬렉션 → 컬렉션 상세 → 작품 상세 → 스와치) → About → Contact → Journal.</p>
 <p><strong>보류 (2차)</strong> — 미공개 작업 보호 영역(Supabase Auth 또는 서명된 URL로), 본인 전용 관리자 페이지.</p>
 
-<h2>05-1. 화면별 기능 한눈에 보기</h2>
+<h2>07. 관리 페이지 — 내용을 터미널 없이 편집하기</h2>
+<p>코드를 열지 않고 브라우저(휴대폰 포함)에서 작업·글·이력을 올리고 고칠 수 있도록, 본인만 들어가는 관리 페이지를 만든다. 상세는 <a href="#spec-admin">기능정의서 09</a>.</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>단계</th><th>할 일</th><th>상태</th></tr></thead>
+<tbody>
+<tr><td>1 · 편집 영역 목록</td><td>사이트 안에서 내가 편집해야 하는 영역을 골라 페이지별로 정리</td><td><span class="st ok">완료</span></td></tr>
+<tr><td>2 · 관리 페이지</td><td>목록의 영역을 페이지 섹션별로 편집할 수 있는 관리 화면 (<code>admin.html</code>) — 지금은 로컬 미리보기 모드</td><td><span class="st ok">완료</span></td></tr>
+<tr><td>3 · Supabase 연결</td><td>사이트·관리 페이지·입장 전 로그인을 Supabase 전제로 모두 만들어 둠. 남은 것은 프로젝트를 만들어 SQL 실행 · 관리자 계정 · 설정 두 칸 채우기</td><td><span class="st demo">준비 완료</span></td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>08. 얻고 싶은 것</h2>
+<p>졸업 전시를 계기로, 졸업 뒤에도 작업을 올릴 때마다 자라나는 나만의 포트폴리오를 갖고 싶다. 링크 하나로 내가 어떤 작업자인지 보여주고, 사이트 자체로 인터랙션을 직접 만드는 역량까지 증명하고 싶다.</p>
+
+<h2>부록 · 아직 정할 것</h2>
+<ul>
+<li>실제 이름·연락처 (현재 메인 화면의 "KIM HANEUL" 등은 임시 가명)</li>
+<li>졸업 전시 프로젝트명과 한 줄 소개, 개인/팀 작업 여부와 역할 분담</li>
+<li>전시명·기간·장소, 전시 부스 QR 코드 연계 여부</li>
+<li>도메인 (GitHub Pages 기본 주소를 그대로 쓸지)</li>
+<li>졸업 전시 이후 첫 화면 문구·프로필을 어떻게 바꿀지</li>
+</ul>
+
+<!-- ============================== 기능정의서 ============================== -->
+
+<p class="part-label" id="spec">PART 2 · 기능정의서</p>
+<h1>화면별 기능 정의</h1>
+<p class="lead">기획서의 기능을 화면 단위로 풀어, 각 기능이 무엇을 보여주고 누르면 어떻게 되는지 정의한다.</p>
 <p class="legend">
   <span class="st ok">작동</span> 지금 바로 쓸 수 있음
   <span class="st demo">예시</span> 작동하지만 예시 내용이 보임 (실제 내용으로 교체 필요)
   <span class="st todo">연결 전</span> Supabase·파일이 있어야 완성
 </p>
 
-<h3>메인 — 회전 레버와 사이트맵 <code>index.html</code></h3>
+<h2>01. 공통 (모든 하위 페이지)</h2>
+<p><strong>레이아웃</strong> — 파란 배경 · 흰 글자 · dim + 격자 / 좌상단 사이트명(로고) → 메인 · 우상단 고정 메뉴 / 하단 푸터에 이메일 · SNS · © 상시 노출 / 탭 제목 "페이지명 — 이름".</p>
+<div class="table-wrap">
+<table>
+<thead><tr><th>기능</th><th>하는 일</th><th>상태</th></tr></thead>
+<tbody>
+<tr><td>사이트명(로고)</td><td>좌측 상단에 메인과 같은 사이트명. 누르면 메인으로, 메인에서 줄이 흔들리며 다시 매달림</td><td><span class="st ok">작동</span></td></tr>
+<tr><td>메뉴 이동</td><td>우측 상단 Work · Journal · About · Contact, 모든 페이지 같은 자리. 지금 페이지는 노랑 밑줄</td><td><span class="st ok">작동</span></td></tr>
+<tr><td>푸터</td><td>이메일 · SNS · © 이름 연도, 모든 페이지 하단에 항상</td><td><span class="st demo">예시</span></td></tr>
+<tr><td>탭 제목</td><td>"Work — 이름", 상세는 "작품명 — 이름"</td><td><span class="st ok">작동</span></td></tr>
+<tr><td>라이트박스</td><td>이미지를 누르면 크게 보기. ←/→로 같은 묶음 넘기기, Esc·✕로 닫기</td><td><span class="st ok">작동</span></td></tr>
+<tr><td>이미지 효과</td><td>불러오면 서서히 나타남, 마우스를 올리면 살짝 확대 (그 외 장식 없음)</td><td><span class="st ok">작동</span></td></tr>
+<tr><td>배색 전환</td><td>푸터 버튼으로 파란 배경 ↔ 흰 배경. 고른 배색은 브라우저에 기억되어 메인과 모든 페이지에 이어짐</td><td><span class="st ok">작동</span></td></tr>
+<tr><td>이미지</td><td>지금은 X 스티치 무늬 상자로 자리만. 사진을 올리면 같은 비율로 교체</td><td><span class="st todo">연결 전</span></td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>02. 메인 <code>index.html</code></h2>
+<p>줄 메뉴 · 유리구슬 · 자수 방명록의 물리 수치와 연출은 <code>README.md</code>에 정리되어 있다. 여기서는 회전 레버와 사이트맵, 배색 전환을 정의한다.</p>
 <div class="table-wrap">
 <table>
 <thead><tr><th>기능</th><th>하는 일</th><th>상태</th></tr></thead>
@@ -342,33 +395,17 @@
 <tr><td>회전 레버</td><td>왼쪽 세로 중앙의 흰 직선. 아래쪽 끝을 축으로 12시 → 6시 반원으로 돌아감. 메인(12시)과 사이트맵(6시) 두 자리에만 머무는 스위치</td><td><span class="st ok">작동</span></td></tr>
 <tr><td>탁 넘어가기</td><td>60° 넘게 돌리면 손을 떼지 않아도 자동으로 끝까지 '탁' 넘어가고, 그 전에 놓으면 되돌아감. 화면을 중간에 멈춰 둘 수 없음</td><td><span class="st ok">작동</span></td></tr>
 <tr><td>사용법 힌트</td><td>돌릴 방향을 가리키는 옅은 곡선 화살표 (메인에선 시계 방향, 사이트맵에선 반대) + 궤적 점 3개</td><td><span class="st ok">작동</span></td></tr>
-<tr><td>화면 회전</td><td>레버를 돌리는 만큼 화면(배경 · 줄 · 구슬 · 자수 · 작가 소개)이 레버 끝을 축으로 함께 돎. + 격자 배경은 원래 화면 밖이던 곳까지 이어짐. 상단 PORTFOLIO · White/Blue · plan-draft는 제자리</td><td><span class="st ok">작동</span></td></tr>
+<tr><td>화면 회전</td><td>레버를 돌리는 만큼 화면(배경 · 줄 · 구슬 · 자수 · 작가 소개)이 레버 끝을 축으로 함께 돎. + 격자 배경은 원래 화면 밖이던 곳까지 이어짐. 상단 사이트명 · White/Blue · plan-draft는 제자리</td><td><span class="st ok">작동</span></td></tr>
 <tr><td>사이트맵 면</td><td>끝까지 돌리면 뒷면의 사이트맵이 똑바로 섬. Work · Journal · About · Contact와 하위 항목 링크</td><td><span class="st ok">작동</span></td></tr>
 <tr><td>조작 잠금</td><td>돌아가는 동안에는 줄 · 구슬을 잡을 수 없고, 사이트맵 링크는 다 넘어갔을 때만 눌림</td><td><span class="st ok">작동</span></td></tr>
 <tr><td>값 기억</td><td>레버 자리(메인/사이트맵)를 브라우저에 저장해 다시 열면 그대로 (사이트맵을 연 채 나가면 사이트맵으로 시작)</td><td><span class="st ok">작동</span></td></tr>
 <tr><td>키보드</td><td>레버에 포커스 후 →/↑ 사이트맵, ←/↓ 메인, Enter/Space 전환</td><td><span class="st ok">작동</span></td></tr>
+<tr><td>배색 전환</td><td>우측 상단 White/Blue 버튼. 포인트 옐로는 두 배색 모두 그대로, 반전 배색에서는 메인 이름 외곽선만 흰색</td><td><span class="st ok">작동</span></td></tr>
 </tbody>
 </table>
 </div>
 
-<h3>공통 (모든 하위 페이지)</h3>
-<div class="table-wrap">
-<table>
-<thead><tr><th>기능</th><th>하는 일</th><th>상태</th></tr></thead>
-<tbody>
-<tr><td>이름(로고)</td><td>좌측 상단 이름을 누르면 메인으로. 메인에서 줄이 흔들리며 다시 매달림</td><td><span class="st ok">작동</span></td></tr>
-<tr><td>메뉴 이동</td><td>우측 상단 Work · Journal · About · Contact, 모든 페이지 같은 자리. 지금 페이지는 노랑 밑줄</td><td><span class="st ok">작동</span></td></tr>
-<tr><td>푸터</td><td>이메일 · SNS · © 이름 연도, 모든 페이지 하단에 항상</td><td><span class="st demo">예시</span></td></tr>
-<tr><td>탭 제목</td><td>"Work — 이름", 상세는 "작품명 — 이름"</td><td><span class="st ok">작동</span></td></tr>
-<tr><td>라이트박스</td><td>이미지를 누르면 크게 보기. ←/→로 같은 묶음 넘기기, Esc·✕로 닫기</td><td><span class="st ok">작동</span></td></tr>
-<tr><td>이미지 효과</td><td>불러오면 서서히 나타남, 마우스를 올리면 살짝 확대 (그 외 장식 없음)</td><td><span class="st ok">작동</span></td></tr>
-<tr><td>배색 전환</td><td>푸터 버튼으로 파란 배경 ↔ 흰 배경</td><td><span class="st ok">작동</span></td></tr>
-<tr><td>이미지</td><td>지금은 X 스티치 무늬 상자로 자리만. 사진을 올리면 같은 비율로 교체</td><td><span class="st todo">연결 전</span></td></tr>
-</tbody>
-</table>
-</div>
-
-<h3>Work — 목록 <code>work.html</code></h3>
+<h2>03. Work — 목록 <code>work.html</code></h2>
 <div class="table-wrap">
 <table>
 <thead><tr><th>기능</th><th>하는 일</th><th>상태</th></tr></thead>
@@ -382,7 +419,7 @@
 </table>
 </div>
 
-<h3>컬렉션 상세 <code>collection.html?id=…</code></h3>
+<h2>04. 컬렉션 상세 <code>collection.html?id=…</code></h2>
 <div class="table-wrap">
 <table>
 <thead><tr><th>기능</th><th>하는 일</th><th>상태</th></tr></thead>
@@ -394,7 +431,7 @@
 </table>
 </div>
 
-<h3>작품 상세 <code>work-detail.html?id=…</code></h3>
+<h2>05. 작품 상세 <code>work-detail.html?id=…</code></h2>
 <div class="table-wrap">
 <table>
 <thead><tr><th>기능</th><th>하는 일</th><th>상태</th></tr></thead>
@@ -410,7 +447,7 @@
 </table>
 </div>
 
-<h3>Journal — 목록 <code>journal.html</code> · 글 <code>journal-post.html?id=…</code></h3>
+<h2>06. Journal — 목록 <code>journal.html</code> · 글 <code>journal-post.html?id=…</code></h2>
 <div class="table-wrap">
 <table>
 <thead><tr><th>기능</th><th>하는 일</th><th>상태</th></tr></thead>
@@ -424,7 +461,7 @@
 </table>
 </div>
 
-<h3>About <code>about.html</code></h3>
+<h2>07. About <code>about.html</code></h2>
 <div class="table-wrap">
 <table>
 <thead><tr><th>기능</th><th>하는 일</th><th>상태</th></tr></thead>
@@ -438,7 +475,7 @@
 </table>
 </div>
 
-<h3>Contact <code>contact.html</code></h3>
+<h2>08. Contact <code>contact.html</code></h2>
 <div class="table-wrap">
 <table>
 <thead><tr><th>기능</th><th>하는 일</th><th>상태</th></tr></thead>
@@ -452,31 +489,34 @@
 </table>
 </div>
 
-<h3>실제 내용으로 바꾸려면</h3>
+<h2 id="spec-admin">09. 관리 페이지 <code>admin.html</code></h2>
+<pre><code>admin.html ─ 관리자 로그인 (이메일 + 비밀번호)
+├─ 사이트 설정 ─ 이름 · 사이트명 · 이메일 · SNS · 상태 · 메인 작가 소개 · 검색용 설명
+├─ Work ─ 컬렉션 · 작품 · 스와치 (목록 → 편집, 사진 끌어다 놓기, 순서 바꾸기, 공개 스위치)
+├─ Journal ─ 글 목록 → 편집 (본문 중간에 이미지 넣기)
+├─ About ─ Bio · Statement · CV 항목 · CV PDF
+└─ 문의함 ─ 받은 문의 · 처리 표시</code></pre>
+
+<h3>들어가기와 사용</h3>
+<p><strong>들어가는 곳</strong> — 숨은 입구. 메인에서 레버를 돌려 나오는 사이트맵 화면 맨 아래의 작은 <code>admin</code> 글자를 누른다 (또는 <code>…/admin.html</code> 주소를 직접). 인터랙티브 메인 화면에는 드러나지 않는다. 들어가면 페이지 섹션별 메뉴에서 목록 → 편집 → 저장.</p>
 <ul>
-<li><strong>이름 · 이메일 · SNS · 현재 상태 · CV PDF</strong> — <code>assets/site.js</code>의 <code>SITE</code> 한 곳만 고치면 모든 하위 페이지에 반영 (메인 화면 이름·이메일은 <code>index.html</code>에서 따로)</li>
-<li><strong>컬렉션 · 작품 · 스와치 · 저널 글 · CV 항목</strong> — 지금은 <code>assets/data.js</code>의 예시 데이터. Supabase 연결 후에는 테이블에 행만 추가하고 <code>is_public</code>을 켜면 공개</li>
-<li><strong>Bio · Statement · 프로필 사진</strong> — <code>assets/data.js</code>의 <code>ABOUT</code></li>
-<li><strong>이미지</strong> — 긴 변 2000px · 1MB 이하로 줄여 Storage <code>portfolio</code> 버킷에 올리고 주소를 데이터에 넣기</li>
+<li><strong>로컬 미리보기 모드</strong> — Supabase 연결 전이라, 저장한 내용은 <strong>이 브라우저에만</strong> 남는다. 같은 브라우저로 사이트를 열면 바로 반영돼 보이지만, 다른 사람에게는 아직 예시가 보인다. 쓴 내용은 <strong>JSON 내보내기</strong>로 백업해 두면 3단계에서 그대로 옮긴다.</li>
+<li><strong>사진</strong> — 칸을 누르거나 끌어다 놓으면 브라우저에서 알아서 줄여서 넣는다. 휴대폰 원본 사진을 그대로 골라도 된다.</li>
+<li><strong>글 본문</strong> — '이미지 넣기'를 누르면 커서 자리에 사진이 들어간다.</li>
+<li><strong>순서 · 공개</strong> — 목록의 ↑↓로 순서를 바꾸고, 공개 스위치를 끄면 사이트에서만 숨는다.</li>
+<li><strong>한 곳에서 고치기</strong> — 사이트 설정의 이름·사이트명·이메일을 바꾸면 메인과 모든 하위 페이지에 함께 바뀐다.</li>
+<li><strong>문의함</strong> — 처리 완료 표시 · 메일로 답장 · 삭제. 실제 문의가 쌓이는 건 3단계 후 (지금은 예시).</li>
 </ul>
 
-<h2>06. 얻고 싶은 것</h2>
-<p>졸업 전시를 계기로, 졸업 뒤에도 작업을 올릴 때마다 자라나는 나만의 포트폴리오를 갖고 싶다. 링크 하나로 내가 어떤 작업자인지 보여주고, 사이트 자체로 인터랙션을 직접 만드는 역량까지 증명하고 싶다.</p>
+<h3>입장 전 로그인</h3>
+<ul>
+<li>관리 페이지를 열면 먼저 <strong>관리자 로그인</strong>(이메일 + 비밀번호) 화면이 나오고, 통과해야 편집 화면이 열린다.</li>
+<li>비밀번호 검사는 Supabase 서버가 하고, 로그인해도 <strong>관리자로 등록한 내 계정</strong>이 아니면 거절한다. 사이트 소스에는 비밀번호가 없다.</li>
+<li>화면을 가리는 건 편의일 뿐, 실제 보호는 데이터베이스 권한(RLS) — 관리자만 쓰기·비공개 읽기·사진 올리기가 된다.</li>
+<li>Supabase 연결 전에는 로그인 칸이 꺼져 있고 "로컬 미리보기로 들어가기"만 된다 (이 브라우저에만 저장되므로 실제 사이트에 영향 없음).</li>
+</ul>
 
-<h2>07. 관리 페이지 — 내용을 터미널 없이 편집하기</h2>
-<p>코드를 열지 않고 브라우저(휴대폰 포함)에서 작업·글·이력을 올리고 고칠 수 있도록, 본인만 들어가는 관리 페이지를 만든다.</p>
-<div class="table-wrap">
-<table>
-<thead><tr><th>단계</th><th>할 일</th><th>상태</th></tr></thead>
-<tbody>
-<tr><td>1 · 편집 영역 목록</td><td>사이트 안에서 내가 편집해야 하는 영역을 골라 페이지별로 정리 (아래 표)</td><td><span class="st ok">완료</span></td></tr>
-<tr><td>2 · 관리 페이지</td><td>목록의 영역을 페이지 섹션별로 편집할 수 있는 관리 화면 (<code>admin.html</code>) — 지금은 로컬 미리보기 모드</td><td><span class="st ok">완료</span></td></tr>
-<tr><td>3 · Supabase 연결</td><td>사이트·관리 페이지·입장 전 로그인을 Supabase 전제로 모두 만들어 둠. 남은 것은 프로젝트를 만들어 SQL 실행 · 관리자 계정 · 설정 두 칸 채우기</td><td><span class="st demo">준비 완료</span></td></tr>
-</tbody>
-</table>
-</div>
-
-<h3>1단계 · 편집 영역 목록</h3>
+<h3>편집 영역 목록</h3>
 <p class="legend">
   편집 빈도 —
   <span class="st ok">자주</span> 새 작업·글이 생길 때마다
@@ -484,22 +524,22 @@
   <span class="st todo">운영</span> 들어온 것을 확인·정리
 </p>
 
-<h3>사이트 정보 (공통)</h3>
+<h4>사이트 정보 (공통)</h4>
 <div class="table-wrap">
 <table>
 <thead><tr><th>항목</th><th>보이는 곳</th><th>지금 적혀 있는 곳</th><th>빈도</th></tr></thead>
 <tbody>
-<tr><td>이름</td><td>하위 페이지 로고 · 푸터 © · 탭 제목 · About · 메인 작가 소개</td><td><code>site.js</code> SITE · <code>index.html</code> · 각 HTML 제목</td><td><span class="st demo">가끔</span></td></tr>
+<tr><td>이름</td><td>푸터 © · 탭 제목 · About · 메인 작가 소개</td><td><code>site.js</code> SITE · <code>index.html</code> · 각 HTML 제목</td><td><span class="st demo">가끔</span></td></tr>
 <tr><td>이메일</td><td>모든 푸터 · Contact · 메인 작가 소개</td><td><code>site.js</code> SITE · <code>index.html</code></td><td><span class="st demo">가끔</span></td></tr>
 <tr><td>SNS 링크 (여러 개)</td><td>모든 푸터 · Contact</td><td><code>site.js</code> SITE</td><td><span class="st demo">가끔</span></td></tr>
 <tr><td>현재 상태 한 줄</td><td>Contact ("협업 문의 가능")</td><td><code>site.js</code> SITE</td><td><span class="st demo">가끔</span></td></tr>
-<tr><td>사이트명</td><td>메인 좌측 상단 (지금 PORTFOLIO, 미정)</td><td><code>index.html</code></td><td><span class="st demo">가끔</span></td></tr>
+<tr><td>사이트명</td><td>메인 좌측 상단 · 하위 페이지 로고 (지금 PORTFOLIO, 미정)</td><td><code>index.html</code></td><td><span class="st demo">가끔</span></td></tr>
 <tr><td>사이트 설명 (검색용)</td><td>검색 결과 · 링크 공유 미리보기</td><td>각 HTML</td><td><span class="st demo">가끔</span></td></tr>
 </tbody>
 </table>
 </div>
 
-<h3>메인</h3>
+<h4>메인</h4>
 <div class="table-wrap">
 <table>
 <thead><tr><th>항목</th><th>보이는 곳</th><th>지금 적혀 있는 곳</th><th>빈도</th></tr></thead>
@@ -511,7 +551,7 @@
 </table>
 </div>
 
-<h3>Work</h3>
+<h4>Work</h4>
 <div class="table-wrap">
 <table>
 <thead><tr><th>항목</th><th>편집할 내용</th><th>지금 적혀 있는 곳</th><th>빈도</th></tr></thead>
@@ -523,7 +563,7 @@
 </table>
 </div>
 
-<h3>Journal</h3>
+<h4>Journal</h4>
 <div class="table-wrap">
 <table>
 <thead><tr><th>항목</th><th>편집할 내용</th><th>지금 적혀 있는 곳</th><th>빈도</th></tr></thead>
@@ -534,7 +574,7 @@
 </table>
 </div>
 
-<h3>About</h3>
+<h4>About</h4>
 <div class="table-wrap">
 <table>
 <thead><tr><th>항목</th><th>편집할 내용</th><th>지금 적혀 있는 곳</th><th>빈도</th></tr></thead>
@@ -547,7 +587,7 @@
 </table>
 </div>
 
-<h3>Contact</h3>
+<h4>Contact</h4>
 <div class="table-wrap">
 <table>
 <thead><tr><th>항목</th><th>편집할 내용</th><th>지금 적혀 있는 곳</th><th>빈도</th></tr></thead>
@@ -577,23 +617,17 @@
 <li><strong>이미지 올리는 규칙이 필요하다.</strong> 올릴 때 자동으로 긴 변 2000px · 1MB 이하로 줄이고, 저장 위치를 <code>portfolio/works/작품id/…</code>처럼 정해 둔다.</li>
 </ol>
 
-<h3>2단계 · 관리 페이지 <code>admin.html</code></h3>
-<p><strong>들어가는 곳</strong> — 숨은 입구. 메인에서 레버를 돌려 나오는 사이트맵 화면 맨 아래의 작은 <code>admin</code> 글자를 누른다 (또는 <code>…/admin.html</code> 주소를 직접). 인터랙티브 메인 화면에는 드러나지 않는다. 들어가면 페이지 섹션별 메뉴에서 목록 → 편집 → 저장.</p>
+<h2>10. 데이터와 내용 교체</h2>
+<p><strong>데이터</strong> — 컬렉션 · 작품 · 저널 · CV · 문의 · 자수는 Supabase 테이블, 이미지는 Storage <code>portfolio</code> 버킷. 공개 표시(<code>is_public</code>)한 것만 사이트에 보임. 테이블 만드는 SQL은 <code>supabase/schema.sql</code> (SQL Editor에서 직접 실행).</p>
+
+<h3>실제 내용으로 바꾸려면</h3>
 <ul>
-<li><strong>로컬 미리보기 모드</strong> — Supabase 연결 전이라, 저장한 내용은 <strong>이 브라우저에만</strong> 남는다. 같은 브라우저로 사이트를 열면 바로 반영돼 보이지만, 다른 사람에게는 아직 예시가 보인다. 쓴 내용은 <strong>JSON 내보내기</strong>로 백업해 두면 3단계에서 그대로 옮긴다.</li>
-<li><strong>사진</strong> — 칸을 누르거나 끌어다 놓으면 브라우저에서 알아서 줄여서 넣는다. 휴대폰 원본 사진을 그대로 골라도 된다.</li>
-<li><strong>글 본문</strong> — '이미지 넣기'를 누르면 커서 자리에 사진이 들어간다.</li>
-<li><strong>순서 · 공개</strong> — 목록의 ↑↓로 순서를 바꾸고, 공개 스위치를 끄면 사이트에서만 숨는다.</li>
-<li><strong>한 곳에서 고치기</strong> — 사이트 설정의 이름·이메일을 바꾸면 메인과 모든 하위 페이지에 함께 바뀐다 (발견 2 해결).</li>
-<li><strong>문의함</strong> — 처리 완료 표시 · 메일로 답장 · 삭제. 실제 문의가 쌓이는 건 3단계 후 (지금은 예시).</li>
+<li><strong>이름 · 이메일 · SNS · 현재 상태 · CV PDF</strong> — <code>assets/site.js</code>의 <code>SITE</code> 한 곳만 고치면 모든 하위 페이지에 반영 (메인 화면 이름·이메일은 <code>index.html</code>에서 따로)</li>
+<li><strong>컬렉션 · 작품 · 스와치 · 저널 글 · CV 항목</strong> — 지금은 <code>assets/data.js</code>의 예시 데이터. Supabase 연결 후에는 테이블에 행만 추가하고 <code>is_public</code>을 켜면 공개</li>
+<li><strong>Bio · Statement · 프로필 사진</strong> — <code>assets/data.js</code>의 <code>ABOUT</code></li>
+<li><strong>이미지</strong> — 긴 변 2000px · 1MB 이하로 줄여 Storage <code>portfolio</code> 버킷에 올리고 주소를 데이터에 넣기</li>
 </ul>
-<h3>입장 전 로그인</h3>
-<ul>
-<li>관리 페이지를 열면 먼저 <strong>관리자 로그인</strong>(이메일 + 비밀번호) 화면이 나오고, 통과해야 편집 화면이 열린다.</li>
-<li>비밀번호 검사는 Supabase 서버가 하고, 로그인해도 <strong>관리자로 등록한 내 계정</strong>이 아니면 거절한다. 사이트 소스에는 비밀번호가 없다.</li>
-<li>화면을 가리는 건 편의일 뿐, 실제 보호는 데이터베이스 권한(RLS) — 관리자만 쓰기·비공개 읽기·사진 올리기가 된다.</li>
-<li>Supabase 연결 전에는 로그인 칸이 꺼져 있고 "로컬 미리보기로 들어가기"만 된다 (이 브라우저에만 저장되므로 실제 사이트에 영향 없음).</li>
-</ul>
+
 <h3>Supabase 연결할 때 할 일</h3>
 <ol>
 <li>Supabase 프로젝트 만들기 → SQL Editor에서 <code>supabase/schema.sql</code> 실행</li>
@@ -601,22 +635,6 @@
 <li><code>assets/data.js</code> 맨 위에 프로젝트 주소와 공개용 키 두 칸 채우고 푸시</li>
 <li>관리 페이지에 로그인 → <strong>JSON 가져오기</strong>로 미리보기 때 써 둔 내용 옮기기 (사진도 자동으로 올라감)</li>
 </ol>
-<h3>관리 페이지 구성</h3>
-<pre><code>admin.html ─ 관리자 로그인 (이메일 + 비밀번호)
-├─ 사이트 설정 ─ 이름 · 사이트명 · 이메일 · SNS · 상태 · 메인 작가 소개 · 검색용 설명
-├─ Work ─ 컬렉션 · 작품 · 스와치 (목록 → 편집, 사진 끌어다 놓기, 순서 바꾸기, 공개 스위치)
-├─ Journal ─ 글 목록 → 편집 (본문 중간에 이미지 넣기)
-├─ About ─ Bio · Statement · CV 항목 · CV PDF
-└─ 문의함 ─ 받은 문의 · 처리 표시</code></pre>
-
-<h2>부록 · 아직 정할 것</h2>
-<ul>
-<li>실제 이름·연락처 (현재 메인 화면의 "KIM HANEUL" 등은 임시 가명)</li>
-<li>졸업 전시 프로젝트명과 한 줄 소개, 개인/팀 작업 여부와 역할 분담</li>
-<li>전시명·기간·장소, 전시 부스 QR 코드 연계 여부</li>
-<li>도메인 (GitHub Pages 기본 주소를 그대로 쓸지)</li>
-<li>졸업 전시 이후 첫 화면 문구·프로필을 어떻게 바꿀지</li>
-</ul>
 
     </article>
   </main>

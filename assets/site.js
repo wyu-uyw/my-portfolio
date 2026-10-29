@@ -17,6 +17,7 @@ const SITE = {
 function applySettings(s) {
   Object.assign(SETTINGS, s);
   SITE.name = s.name || "";
+  SITE.title = s.site_title || "PORTFOLIO";   // 메인 좌측 상단과 같은 사이트명 (하위 페이지 로고)
   SITE.email = s.email || "";
   SITE.sns = s.sns || [];
   SITE.status = s.status || "";
@@ -92,7 +93,7 @@ function renderChrome() {
   fillChrome();
   setupThemeToggle(footer.querySelector("[data-theme-toggle]"));
 
-  // 이름(로고)으로 메인에 돌아가면 메인의 줄이 다시 매달리는 연출
+  // 사이트명(로고)으로 메인에 돌아가면 메인의 줄이 다시 매달리는 연출
   header.querySelector("[data-home]").addEventListener("click", () => {
     try { sessionStorage.setItem("rehang", "1"); } catch (_) {}
   });
@@ -101,7 +102,7 @@ function renderChrome() {
 // 로고·푸터의 이름·이메일·SNS를 설정값으로 채운다 (설정을 새로 받으면 다시 부름)
 function fillChrome() {
   const logo = document.querySelector(".site-header [data-home]");
-  if (logo) logo.textContent = SITE.name;
+  if (logo) logo.textContent = SITE.title;
   const links = document.querySelector("[data-contact-links]");
   if (links) {
     links.innerHTML = (SITE.email ? `<a href="mailto:${esc(SITE.email)}">${esc(SITE.email)}</a>` : "") +
