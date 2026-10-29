@@ -148,13 +148,14 @@
     -webkit-user-select: none;
     -webkit-touch-callout: none;
   }
-  /* 작품을 매단 줄 */
-  #ropes {
+  /* 작품 천(WebGL) + 그 위에 천을 매단 줄. 천 그림자는 캔버스 전체에 한 번 */
+  #cloth, #ropes {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
   }
+  #cloth { filter: drop-shadow(0 14px 18px var(--cloth-shadow)); }
 
   /* ---------- 리퀴드 글래스 구슬 ---------- */
   #glass {
@@ -283,7 +284,7 @@
   #world.flip #sitemap { z-index: 3; }               /* 절반 넘게 돌면 사이트맵이 위로 */
   /* 두 면이 + 격자를 함께 쓰느라 투명하므로, 돌아가는 동안 메인 내용은 후반에 사라지고 사이트맵 내용은 전반에 나타난다.
      (#stage 전체가 아니라 요소마다 투명도를 줘서 유리 구슬의 backdrop-filter가 깨지지 않게) */
-  #bg, .corner.bl, #ropes, #glass { opacity: var(--main-a, 1); }
+  #bg, .corner.bl, #cloth, #ropes, #glass { opacity: var(--main-a, 1); }
   .sm-inner { opacity: var(--map-a, 0); }
   .sm-inner { position: relative; max-width: 1040px; }
   .sm-kicker { margin: 0 0 28px; font-size: 12px; font-weight: 500; letter-spacing: 0.24em; color: var(--accent); }
@@ -379,6 +380,7 @@
   </footer>
 
   <div id="stage" aria-hidden="true">
+    <canvas id="cloth"></canvas>
     <canvas id="ropes"></canvas>
     <div id="glass"></div>
   </div>
@@ -452,6 +454,7 @@
   </svg>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="assets/data.js"></script>
   <script>
   // ===================================================================
@@ -460,11 +463,11 @@
   // ===================================================================
   const CONFIG = {
     hang: {
-      count: [3, 4, 5],      // 걸리는 작품 수: 모바일(<640) / 태블릿(<1024) / 데스크톱
-      clothWidth: 0.62,      // 칸 폭 대비 천 너비
+      count: 3,              // 걸리는 작품 수 (모든 화면)
+      clothWidth: 0.66,      // 칸 폭 대비 천 너비
       maxHeight: 0.45,       // 천 최대 높이 (화면 높이 비율)
       ratio: 1.25,           // 천 세로/가로 (작품 이미지가 붙기 전 기본값)
-      top: [0.13, 0.21],     // 천 윗변 높이 범위 (화면 높이 비율) — 칸마다 조금씩 달라 리듬이 생김
+      top: [0.07, 0.3],      // 천 윗변 높이 범위 (화면 높이 비율) — 칸마다 높이를 크게 달리해 리듬을 만든다
     },
     rope: {
       segmentLength: 14,     // 마디 간격(px), 화면 높이에 따라 비례 조정. 마디 반지름 = 간격의 절반 → 틈 없음
@@ -521,6 +524,7 @@
     if (ball) {
       sizeCanvas();
       stitchResize();
+      if (gl) refreshClothTextures();
       renderOnce();
     }
   });
@@ -569,19 +573,14 @@
   // ------------------------------------------------------------------
   // 작품 걸이 — 작품 1점마다 천장에서 수직으로 내려온 줄 2개. 두 줄 끝이 천의 윗모서리 양쪽을 잡는다.
   // 줄은 예전 메뉴 줄과 같은 Matter.js 사슬 (천장 고정점이 약한 스프링이라 아래로 당기면 늘어남).
-  // 지금은 천 대신 두 줄 끝을 천 너비만큼 벌려 두는 임시 막대 + 점선 자리 표시. (다음 단계: 천이 이 자리를 대신함)
+  // 두 줄 끝 사이는 보이지 않는 막대(천 윗변의 팽팽함)로 천 너비만큼 벌려 두고, 천(아래 '천' 모듈)이 두 끝에 매달린다.
   // ------------------------------------------------------------------
-  // 칸마다 천 윗변 높이를 조금씩 다르게 (고정된 순서라 새로고침해도 같은 리듬)
-  const TOP_RHYTHM = [0.35, 0.8, 0.15, 0.65, 0.5];
-
-  function hangCount() {
-    const [m, t, d] = CONFIG.hang.count;
-    return W < 640 ? m : W < 1024 ? t : d;
-  }
+  // 칸마다 천 윗변 높이를 크게 다르게 (고정된 순서라 새로고침해도 같은 리듬)
+  const TOP_RHYTHM = [0.2, 0.95, 0.5];
 
   function hangLayout() {
     const c = CONFIG.hang;
-    const n = hangCount();
+    const n = c.count;
     const left = leverZone();                 // 왼쪽 레버 영역은 비워 둔다
     const slot = (W - left) / n;
     const w = Math.min(slot * c.clothWidth, (H * c.maxHeight) / c.ratio);
@@ -618,14 +617,17 @@
       createRope(slot.cx - slot.w / 2, slot.top, slot.segLen, filter),
       createRope(slot.cx + slot.w / 2, slot.top, slot.segLen, filter),
     ];
-    // 임시: 두 줄 끝을 천 너비만큼 벌려 둠 (다음 단계에서 천이 대신함)
+    // 두 줄 끝을 천 너비만큼 벌려 두는 보이지 않는 막대 (천 윗변이 팽팽하게 걸린 상태)
     const spreader = Constraint.create({ bodyA: ropes[0].end, bodyB: ropes[1].end, length: slot.w, stiffness: 1, damping: 0.05 });
     Composite.add(world, [...ropes.flatMap((r) => [...r.segs, r.anchor, ...r.links]), spreader]);
-    return { index, ...slot, ropes, spreader };
+    const hang = { index, ...slot, ropes, spreader };
+    if (gl) hang.cloth = createCloth(hang);
+    return hang;
   }
 
   function removeHang(hang) {
     Composite.remove(world, [...hang.ropes.flatMap((r) => [...r.segs, r.anchor, ...r.links]), hang.spreader]);
+    if (hang.cloth) disposeCloth(hang.cloth);
   }
 
   function buildHangs() {
@@ -635,6 +637,312 @@
 
   function ropeBodies() {
     return hangs.flatMap((h) => h.ropes.flatMap((r) => r.segs));
+  }
+
+  // ------------------------------------------------------------------
+  // 천 — 3D 베를레(Verlet) 파티클 격자. 윗변 양 끝 두 점이 두 줄 끝에 고정된다.
+  // 좌표: x 오른쪽, y 아래(화면 px), z 화면 앞쪽(+). 깊이가 있어 실제로 접히고 뒤집힐 수 있다.
+  // 렌더링은 three.js WebGL 캔버스 1개 (화면 픽셀과 1:1인 정사영 카메라).
+  // ------------------------------------------------------------------
+  const CLOTH = {
+    cols: 18,              // 가로 격자 수 (세로 = 가로 × 천 비율)
+    colsMobile: 10,        // 모바일(<640) 가로 격자 수
+    gravity: 1800,         // px/s²
+    damping: 0.01,         // 서브스텝마다 속도 감쇠
+    iterations: 2,         // 서브스텝마다 제약 반복 횟수
+    shear: 0.9,            // 전단(대각선) 강성 — 구조(상하좌우)는 1
+    bend: 0.25,            // 굽힘(한 칸 건너뛰기) 강성
+    weight: 0.02,          // 천 무게가 각 줄 끝을 아래로 당기는 힘 (Matter 힘 단위)
+    jitter: 0.6,           // 처음 z 흔들림(px) — 평면에만 머물지 않고 앞뒤로 접힐 수 있게
+    ballDepth: 0.5,        // 구슬 중심을 천보다 (반지름 × 이만큼) 앞에 둔다 → 닿으면 천이 구슬 뒤로 밀림
+    ballPush: 0.01,        // 천을 밀어낸 만큼 구슬이 받는 반작용
+    texSize: 1024,         // 텍스처 긴 변 최대(px)
+  };
+
+  // WebGL 준비 (three.js). 지원하지 않으면 null → 천 대신 점선 자리 표시 (대체 화면은 8단계에서)
+  const gl = (() => {
+    if (!window.THREE) return null;
+    const cv = document.getElementById("cloth");
+    let renderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ canvas: cv, alpha: true, antialias: true });
+    } catch (_) {
+      return null;
+    }
+    renderer.setClearColor(0x000000, 0);
+    const scene = new THREE.Scene();
+    const camera = new THREE.OrthographicCamera(0, 1, 0, -1, -5000, 5000);   // 크기는 sizeGL()
+    return { renderer, scene, camera, maxAniso: renderer.capabilities.getMaxAnisotropy() };
+  })();
+
+  function sizeGL() {
+    if (!gl) return;
+    gl.renderer.setPixelRatio(dpr);
+    gl.renderer.setSize(W, H, false);
+    // 화면 좌표 (x, y아래) → three 좌표 (x, -y). 1 단위 = 1 CSS px
+    Object.assign(gl.camera, { left: 0, right: W, top: 0, bottom: -H });
+    gl.camera.updateProjectionMatrix();
+  }
+
+  // 색은 텍스처를 그대로 통과 (색 보정·톤매핑 없음). 정면을 보는 면은 밝기 계수가 정확히 1이라 원래 색,
+  // 접혀서 비스듬한 면만 어두워진다. 뒤집힌 면은 원단 뒷면처럼 흐리고(밉맵 바이어스) 어둡게.
+  const CLOTH_VERT = `
+    varying vec2 vUv;
+    varying vec3 vNormal;
+    void main() {
+      vUv = uv;
+      vNormal = normal;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }`;
+  const CLOTH_FRAG = `
+    uniform sampler2D map;
+    uniform vec2 lightDir;
+    varying vec2 vUv;
+    varying vec3 vNormal;
+    void main() {
+      vec3 n = normalize(vNormal);
+      if (!gl_FrontFacing) n = -n;
+      float shade = clamp(0.55 + 0.45 * clamp(n.z, 0.0, 1.0) + dot(n.xy, lightDir) * 0.25, 0.35, 1.0);
+      vec3 col;
+      if (gl_FrontFacing) {
+        col = texture2D(map, vUv).rgb;
+      } else {
+        col = texture2D(map, vUv, 2.5).rgb;
+        col = mix(col, vec3(dot(col, vec3(0.299, 0.587, 0.114))), 0.3) * 0.7;
+      }
+      gl_FragColor = vec4(col * shade, 1.0);
+    }`;
+
+  // 이미지가 없을 때 거는 X 스티치 무늬 원단 (하위 페이지 이미지 자리와 같은 무늬)
+  function stitchTexture(hang) {
+    const tw = 512, th = Math.round(tw * (hang.h / hang.w));
+    const c = document.createElement("canvas");
+    c.width = tw;
+    c.height = th;
+    const g = c.getContext("2d");
+    g.fillStyle = cssColor("color-mix(in srgb, var(--text) 9%, var(--bg))");
+    g.fillRect(0, 0, tw, th);
+    const cell = (24 * tw) / hang.w;            // 화면에서 24px 칸
+    const h = cell * 0.17;
+    g.strokeStyle = cssColor("color-mix(in srgb, var(--stitch) 40%, transparent)");
+    g.lineWidth = (1.2 * tw) / hang.w;
+    g.lineCap = "round";
+    g.beginPath();
+    for (let y = cell / 2; y < th; y += cell) {
+      for (let x = cell / 2; x < tw; x += cell) {
+        g.moveTo(x - h, y + h); g.lineTo(x + h, y - h);
+        g.moveTo(x - h, y - h); g.lineTo(x + h, y + h);
+      }
+    }
+    g.stroke();
+    const tex = new THREE.CanvasTexture(c);
+    setupTexture(tex);
+    return tex;
+  }
+
+  // 텍스처 설정: 밉맵 + 비등방 필터. 인코딩은 그대로(Linear) 두어 sRGB 값을 변환 없이 화면에 낸다 → 색 왜곡 없음
+  function setupTexture(tex) {
+    tex.generateMipmaps = true;
+    tex.minFilter = THREE.LinearMipmapLinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    tex.anisotropy = gl.maxAniso;
+    tex.needsUpdate = true;
+  }
+
+  // 작품 이미지를 긴 변 최대 texSize로 줄여 텍스처로 (다음 단계에서 작품 데이터와 연결)
+  function loadClothImage(cloth, src) {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const s = Math.min(1, CLOTH.texSize / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.naturalWidth * s);
+      c.height = Math.round(img.naturalHeight * s);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      const tex = new THREE.CanvasTexture(c);
+      setupTexture(tex);
+      cloth.tex.dispose();
+      cloth.tex = tex;
+      cloth.image = true;
+      cloth.mat.uniforms.map.value = tex;
+    };
+    img.src = src;
+  }
+
+  function createCloth(hang) {
+    const nx = W < 640 ? CLOTH.colsMobile : CLOTH.cols;
+    const ny = Math.max(2, Math.round(((nx - 1) * hang.h) / hang.w)) + 1;
+    const n = nx * ny;
+    const dx = hang.w / (nx - 1), dy = hang.h / (ny - 1);
+    const a = hang.ropes[0].end.position, b = hang.ropes[1].end.position;
+    const pos = new Float32Array(n * 3);
+    for (let j = 0; j < ny; j++) {
+      for (let i = 0; i < nx; i++) {
+        const k = (j * nx + i) * 3, t = i / (nx - 1);
+        pos[k] = a.x + (b.x - a.x) * t;
+        pos[k + 1] = a.y + (b.y - a.y) * t + j * dy;
+        pos[k + 2] = j ? (Math.random() - 0.5) * CLOTH.jitter : 0;
+      }
+    }
+    const invM = new Float32Array(n).fill(1);
+    const pins = [0, nx - 1];                    // 윗변 양 끝 = 두 줄 끝
+    for (const p of pins) invM[p] = 0;
+
+    // 제약: 구조(상하좌우) · 전단(대각선) · 굽힘(한 칸 건너뛰기). 길이는 반듯한 상태 기준
+    const cons = [];
+    const add = (i1, j1, i2, j2, k) => {
+      if (i2 < 0 || i2 >= nx || j2 >= ny) return;
+      cons.push(j1 * nx + i1, j2 * nx + i2, Math.hypot((i2 - i1) * dx, (j2 - j1) * dy), k);
+    };
+    for (let j = 0; j < ny; j++) {
+      for (let i = 0; i < nx; i++) {
+        add(i, j, i + 1, j, 1);
+        add(i, j, i, j + 1, 1);
+        add(i, j, i + 1, j + 1, CLOTH.shear);
+        add(i, j, i - 1, j + 1, CLOTH.shear);
+        add(i, j, i + 2, j, CLOTH.bend);
+        add(i, j, i, j + 2, CLOTH.bend);
+      }
+    }
+
+    // 그리기: 위치는 매 프레임 갱신, uv · 삼각형은 고정 (three 좌표에서 반시계 = 앞면)
+    const geom = new THREE.BufferGeometry();
+    const gpos = new THREE.BufferAttribute(new Float32Array(n * 3), 3);
+    gpos.setUsage(THREE.DynamicDrawUsage);
+    geom.setAttribute("position", gpos);
+    const uv = new Float32Array(n * 2);
+    for (let j = 0; j < ny; j++) {
+      for (let i = 0; i < nx; i++) {
+        uv[(j * nx + i) * 2] = i / (nx - 1);
+        uv[(j * nx + i) * 2 + 1] = 1 - j / (ny - 1);
+      }
+    }
+    geom.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+    const idx = [];
+    for (let j = 0; j < ny - 1; j++) {
+      for (let i = 0; i < nx - 1; i++) {
+        const p = j * nx + i, q = p + 1, r = p + nx, s = r + 1;
+        idx.push(p, r, q, q, r, s);
+      }
+    }
+    geom.setIndex(idx);
+
+    const tex = stitchTexture(hang);
+    const mat = new THREE.ShaderMaterial({
+      uniforms: { map: { value: tex }, lightDir: { value: new THREE.Vector2(-0.6, 0.8) } },
+      vertexShader: CLOTH_VERT,
+      fragmentShader: CLOTH_FRAG,
+      side: THREE.DoubleSide,
+    });
+    const mesh = new THREE.Mesh(geom, mat);
+    mesh.frustumCulled = false;
+    gl.scene.add(mesh);
+
+    const cloth = { nx, ny, n, pos, prev: pos.slice(), invM, pins, cons: Float32Array.from(cons), geom, gpos, mat, mesh, tex, image: false };
+    updateClothMesh(cloth);
+    return cloth;
+  }
+
+  function disposeCloth(cloth) {
+    gl.scene.remove(cloth.mesh);
+    cloth.geom.dispose();
+    cloth.mat.dispose();
+    cloth.tex.dispose();
+  }
+
+  // 배색이 바뀌면 이미지 없는 천의 X 스티치 무늬를 새 색으로
+  function refreshClothTextures() {
+    for (const hang of hangs) {
+      const c = hang.cloth;
+      if (!c || c.image) continue;
+      c.tex.dispose();
+      c.tex = stitchTexture(hang);
+      c.mat.uniforms.map.value = c.tex;
+    }
+  }
+
+  // 서브스텝 1회: 적분 → 줄 끝 고정 → 제약 반복 → 구슬 밀어내기
+  function stepCloth(hang, dtSec) {
+    const c = hang.cloth;
+    const { pos, prev, invM, cons, pins } = c;
+    const g = CLOTH.gravity * dtSec * dtSec;
+    const keep = 1 - CLOTH.damping;
+    for (let p = 0, k = 0; p < c.n; p++, k += 3) {
+      if (!invM[p]) continue;
+      for (let d = 0; d < 3; d++) {
+        const v = (pos[k + d] - prev[k + d]) * keep;
+        prev[k + d] = pos[k + d];
+        pos[k + d] += v;
+      }
+      pos[k + 1] += g;
+    }
+    const pinTo = () => {
+      for (let s = 0; s < 2; s++) {
+        const e = hang.ropes[s].end.position, k = pins[s] * 3;
+        pos[k] = prev[k] = e.x;
+        pos[k + 1] = prev[k + 1] = e.y;
+        pos[k + 2] = prev[k + 2] = 0;
+      }
+    };
+    pinTo();
+    for (let it = 0; it < CLOTH.iterations; it++) {
+      for (let q = 0; q < cons.length; q += 4) {
+        const p1 = cons[q], p2 = cons[q + 1];
+        const w1 = invM[p1], w2 = invM[p2], ws = w1 + w2;
+        if (!ws) continue;
+        const k1 = p1 * 3, k2 = p2 * 3;
+        const ex = pos[k2] - pos[k1], ey = pos[k2 + 1] - pos[k1 + 1], ez = pos[k2 + 2] - pos[k1 + 2];
+        const dist = Math.sqrt(ex * ex + ey * ey + ez * ez) || 1e-6;
+        const s = ((dist - cons[q + 2]) / (dist * ws)) * cons[q + 3];
+        pos[k1] += ex * s * w1; pos[k1 + 1] += ey * s * w1; pos[k1 + 2] += ez * s * w1;
+        pos[k2] -= ex * s * w2; pos[k2 + 1] -= ey * s * w2; pos[k2 + 2] -= ez * s * w2;
+      }
+    }
+
+    // 구슬 = 천보다 살짝 앞에 있는 구. 안으로 들어온 점을 구 표면으로 밀어내 천이 구슬을 뚫지 않게
+    const R = ballR + 2, bx = ball.position.x, by = ball.position.y, bz = ballR * CLOTH.ballDepth;
+    let pushX = 0, pushY = 0;
+    for (let p = 0, k = 0; p < c.n; p++, k += 3) {
+      if (!invM[p]) continue;
+      const ex = pos[k] - bx, ey = pos[k + 1] - by;
+      if (ex > R || ex < -R || ey > R || ey < -R) continue;
+      let ez = pos[k + 2] - bz;
+      const d2 = ex * ex + ey * ey + ez * ez;
+      if (d2 >= R * R) continue;
+      const d = Math.sqrt(d2) || 1e-6;
+      const s = (R - d) / d;
+      pos[k] += ex * s; pos[k + 1] += ey * s; pos[k + 2] += ez * s;
+      pushX += ex * s; pushY += ey * s;
+    }
+    if (pushX || pushY) {
+      const v = ball.velocity;
+      Body.setVelocity(ball, { x: v.x - pushX * CLOTH.ballPush, y: v.y - pushY * CLOTH.ballPush });
+    }
+  }
+
+  // 천 무게: 서브스텝마다 두 줄 끝을 아래로 (Matter 힘은 업데이트마다 초기화되므로 매번)
+  function weighRopes() {
+    for (const hang of hangs) {
+      if (!hang.cloth) continue;
+      for (const r of hang.ropes) Body.applyForce(r.end, r.end.position, { x: 0, y: CLOTH.weight });
+    }
+  }
+
+  function updateClothMesh(c) {
+    const a = c.gpos.array, pos = c.pos;
+    for (let k = 0; k < a.length; k += 3) {
+      a[k] = pos[k];
+      a[k + 1] = -pos[k + 1];
+      a[k + 2] = pos[k + 2];
+    }
+    c.gpos.needsUpdate = true;
+    c.geom.computeVertexNormals();
+  }
+
+  function drawCloths() {
+    if (!gl) return;
+    for (const hang of hangs) if (hang.cloth) updateClothMesh(hang.cloth);
+    gl.renderer.render(gl.scene, gl.camera);
   }
 
   // ------------------------------------------------------------------
@@ -806,12 +1114,12 @@
     fieldEl.style.maskPosition = fieldEl.style.webkitMaskPosition = pos;
   }
 
-  // 색 토큰(color-mix 등)을 캔버스가 읽을 수 있는 rgb 문자열로 풀어 준다
+  // 색 토큰(color-mix 등)을 캔버스가 읽을 수 있는 rgb 문자열로 풀어 준다. "--이름" 또는 CSS 색 식
   const colorProbe = document.createElement("i");
   colorProbe.style.display = "none";
   document.body.appendChild(colorProbe);
   function cssColor(name) {
-    colorProbe.style.color = `var(${name})`;
+    colorProbe.style.color = name.startsWith("--") ? `var(${name})` : name;
     const c = getComputedStyle(colorProbe).color;
     // color-mix 결과는 브라우저에 따라 "color(srgb r g b / a)"로 나오므로 rgba로 바꾼다
     const m = c.match(/^color\(srgb ([\d.e-]+) ([\d.e-]+) ([\d.e-]+)(?: \/ ([\d.e-]+))?\)$/);
@@ -841,10 +1149,11 @@
     root.setProperty("--grid-ox", origin.x - grid / 2 - 0.5 + "px");
     root.setProperty("--grid-oy", origin.y - grid / 2 - 0.5 + "px");
     sizeField();
+    sizeGL();
   }
 
   // 줄: 천장 고정점 → 마디들을 부드러운 곡선으로, 줄 끝에 천을 잡는 작은 매듭.
-  // 두 줄 끝 사이에는 천이 걸릴 자리를 점선으로 (다음 단계에서 천으로 바뀜)
+  // (WebGL이 없으면 천 대신 천이 걸릴 자리를 점선으로)
   function drawHangs() {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, W, H);
@@ -867,21 +1176,23 @@
         ctx.lineTo(end.x, end.y);
         ctx.stroke();
       }
-      // 천 자리: 두 줄 끝을 윗변으로, 그 수직 아래로 천 높이만큼
       const a = hang.ropes[0].end.position, b = hang.ropes[1].end.position;
-      const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
-      const nx = -(b.y - a.y) / len * hang.h, ny = (b.x - a.x) / len * hang.h;
-      ctx.strokeStyle = placeholderColor;
-      ctx.lineWidth = 1;
-      ctx.setLineDash([4, 5]);
-      ctx.beginPath();
-      ctx.moveTo(a.x, a.y);
-      ctx.lineTo(b.x, b.y);
-      ctx.lineTo(b.x + nx, b.y + ny);
-      ctx.lineTo(a.x + nx, a.y + ny);
-      ctx.closePath();
-      ctx.stroke();
-      ctx.setLineDash([]);
+      if (!hang.cloth) {
+        // 천 자리: 두 줄 끝을 윗변으로, 그 수직 아래로 천 높이만큼
+        const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+        const nx = -(b.y - a.y) / len * hang.h, ny = (b.x - a.x) / len * hang.h;
+        ctx.strokeStyle = placeholderColor;
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 5]);
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.lineTo(b.x + nx, b.y + ny);
+        ctx.lineTo(a.x + nx, a.y + ny);
+        ctx.closePath();
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
       ctx.fillStyle = pinColor;
       for (const p of [a, b]) {
         ctx.beginPath();
@@ -957,6 +1268,7 @@
   }
 
   function renderOnce() {
+    drawCloths();
     drawHangs();
     drawGlass();
     drawGlow();
@@ -1121,7 +1433,9 @@
     let n = 0;
     while (acc >= STEP && n < CONFIG.substeps * 3) {
       clampBallSpeed();
+      weighRopes();
       Engine.update(engine, STEP);
+      for (const hang of hangs) if (hang.cloth) stepCloth(hang, STEP / 1000);
       acc -= STEP;
       n++;
     }
