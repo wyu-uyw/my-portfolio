@@ -111,9 +111,10 @@ const ENTITIES = {
       id: "", type: "project", collection_id: null, title: "", year: new Date().getFullYear(), techniques: [],
       fiber: "", size: "", tools: "", description: "", cover_image: null,
       process_images: PROCESS_STEPS.map((step) => ({ step, src: null, caption: "" })),
-      gallery_images: [], is_public: false,
+      gallery_images: [], show_on_main: false, main_order: null, is_public: false,
     }),
     thumb: (r) => r.cover_image,
+    badges: (r) => [r.show_on_main && [`메인 ${r.main_order ?? ""}`.trim(), true]],
     meta: (r) => `${r.year} · ${r.techniques.map((t) => LABELS.technique[t]).join(", ") || "기법 없음"}`,
     view: (r) => `work-detail.html?id=${encodeURIComponent(r.id)}`,
     fields: [
@@ -131,6 +132,10 @@ const ENTITIES = {
       { name: "cover_image", label: "대표 이미지", type: "image", wide: true, folder: "works" },
       { name: "process_images", label: "제작 과정 (필수 섹션)", type: "process", hint: "스케치 → 패턴 전개 → 샘플 → 손 작업. 직접 손으로 만드는 사진이 공예 역량을 보여줘요." },
       { name: "gallery_images", label: "완성 이미지 갤러리", type: "gallery", hint: "전체 컷과, 질감이 보이는 디테일 확대 컷('디테일' 표시)." },
+      { row: [
+        { name: "show_on_main", label: "메인에 걸기", type: "toggle", hint: "메인 화면에 천으로 걸려요 (최대 3점, 공개된 작품만)." },
+        { name: "main_order", label: "메인 순서", type: "number", placeholder: "1", hint: "작은 수가 왼쪽부터." },
+      ] },
       { name: "is_public", label: "사이트에 공개", type: "toggle" },
     ],
   },
@@ -143,9 +148,10 @@ const ENTITIES = {
     newRow: () => ({
       id: "", type: "swatch", collection_id: null, title: "", year: new Date().getFullYear(), techniques: [],
       fiber: "", size: "", tools: "", description: "", cover_image: null,
-      process_images: [], gallery_images: [], is_public: false,
+      process_images: [], gallery_images: [], show_on_main: false, main_order: null, is_public: false,
     }),
     thumb: (r) => r.cover_image,
+    badges: (r) => [r.show_on_main && [`메인 ${r.main_order ?? ""}`.trim(), true]],
     meta: (r) => `${r.year} · ${r.techniques.map((t) => LABELS.technique[t]).join(", ") || "기법 없음"}`,
     view: () => "work.html?tab=swatch",
     fields: [
@@ -159,6 +165,10 @@ const ENTITIES = {
       ] },
       { name: "description", label: "실험 메모", type: "textarea", hint: "한두 줄. 크게 보기에서 함께 나와요." },
       { name: "cover_image", label: "사진 (정사각으로 보여요)", type: "image", folder: "swatches" },
+      { row: [
+        { name: "show_on_main", label: "메인에 걸기", type: "toggle", hint: "메인 화면에 천으로 걸려요 (최대 3점, 공개된 작품만)." },
+        { name: "main_order", label: "메인 순서", type: "number", placeholder: "1", hint: "작은 수가 왼쪽부터." },
+      ] },
       { name: "is_public", label: "사이트에 공개", type: "toggle" },
     ],
   },

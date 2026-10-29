@@ -17,6 +17,8 @@
     /* + 패턴 타일 (선 2개, 픽셀 중앙 정렬로 선명하게). 모든 화면에서 24px (자수 격자와 공유) */
     --grid: 24px;
     --plus-tile: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Cpath d='M12.5 9v7M9 12.5h7' stroke='%23000' stroke-width='1'/%3E%3C/svg%3E");
+    /* X 스티치 무늬 모양 (WebGL 없을 때 거는 천의 자리 표시, 하위 페이지와 같은 무늬) */
+    --x-tile: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Cpath d='M8 16L16 8M8 8l8 8' stroke='%23000' stroke-width='1.2' stroke-linecap='round'/%3E%3C/svg%3E");
   }
 
   * { box-sizing: border-box; }
@@ -156,6 +158,33 @@
     height: 100%;
   }
   #cloth { filter: drop-shadow(0 14px 18px var(--cloth-shadow)); }
+  /* WebGL이 없을 때 대신 거는 천: 두 줄 끝에 반듯하게, 살짝 흔들림. 이미지가 없으면 X 스티치 무늬 */
+  .cloth-dom {
+    position: absolute;
+    left: 0;
+    top: 0;
+    padding: 0;
+    border: 0;
+    cursor: pointer;
+    transform-origin: 0 0;
+    background: color-mix(in srgb, var(--text) 9%, var(--bg)) center / cover no-repeat;
+    box-shadow: 0 14px 18px -6px var(--cloth-shadow);
+  }
+  .cloth-dom::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: color-mix(in srgb, var(--stitch) 40%, transparent);
+    -webkit-mask-image: var(--x-tile);
+    mask-image: var(--x-tile);
+    -webkit-mask-size: 24px 24px;
+    mask-size: 24px 24px;
+  }
+  .cloth-dom[style*="background-image"]::before { display: none; }
+  @keyframes cloth-sway { from { rotate: -0.6deg; } to { rotate: 0.6deg; } }
+  @media (prefers-reduced-motion: no-preference) {
+    .cloth-dom { animation: cloth-sway 3.2s ease-in-out infinite alternate; }
+  }
 
   /* ---------- 리퀴드 글래스 구슬 ---------- */
   #glass {
@@ -353,6 +382,10 @@
     transition: opacity 0.3s ease;
   }
   #unfold.show .uf-panel { opacity: 1; }
+  /* WebGL이 없을 때 천 대신 크게 보여 주는 작품 이미지 (없으면 X 스티치 무늬) */
+  .uf-image { position: absolute; background: color-mix(in srgb, var(--text) 9%, var(--bg)) center / cover no-repeat; box-shadow: 0 20px 40px -12px var(--cloth-shadow); }
+  .uf-image:not([style*="url"])::before { content: ""; position: absolute; inset: 0; background: color-mix(in srgb, var(--stitch) 40%, transparent); -webkit-mask: var(--x-tile) 0 0 / 24px 24px; mask: var(--x-tile) 0 0 / 24px 24px; }
+  .uf-image[hidden] { display: none; }
   .uf-meta { margin: 0 0 6px; font-size: 12px; font-weight: 500; letter-spacing: 0.16em; color: var(--accent); }
   .uf-title { margin: 0 0 18px; font-weight: 300; font-size: clamp(24px, 4vw, 40px); line-height: 1.15; color: var(--text); }
   .uf-actions { display: flex; justify-content: center; gap: 8px; }
@@ -397,6 +430,7 @@
       <li><a href="about.html">About</a></li>
       <li><a href="contact.html">Contact</a></li>
     </ul>
+    <ul class="sr-only" id="sr-works" aria-label="메인에 걸린 작품"></ul>
   </nav>
 
   <div id="world">
@@ -485,6 +519,7 @@
 
   <!-- 천 펼쳐 보기: 작품 정보 (천은 #stage 안에서 화면 가운데로 펴진다) -->
   <div id="unfold" role="dialog" aria-modal="true" aria-labelledby="uf-title">
+    <div class="uf-image" id="uf-image" hidden></div>
     <div class="uf-panel">
       <p class="uf-meta" id="uf-meta"></p>
       <h2 class="uf-title" id="uf-title"></h2>
@@ -514,6 +549,7 @@
     hang: {
       count: 3,              // 걸리는 작품 수 (모든 화면)
       clothWidth: 0.66,      // 칸 폭 대비 천 너비
+      clothWidthMobile: 0.86, // 모바일(<640)에서는 칸이 좁아 천을 칸에 더 꽉 차게
       maxHeight: 0.45,       // 천 최대 높이 (화면 높이 비율)
       ratio: 1.25,           // 천 세로/가로 (작품 이미지가 붙기 전 기본값)
       top: [0.07, 0.3],      // 천 윗변 높이 범위 (화면 높이 비율) — 칸마다 높이를 크게 달리해 리듬을 만든다
@@ -640,15 +676,25 @@
     const n = c.count;
     const left = leverZone();                 // 왼쪽 레버 영역은 비워 둔다
     const slot = (W - left) / n;
-    const w = Math.min(slot * c.clothWidth, (H * c.maxHeight) / c.ratio);
     const segLen = CONFIG.rope.segmentLength * Math.min(1.15, Math.max(0.6, H / 900));
-    return Array.from({ length: n }, (_, i) => ({
-      cx: left + slot * (i + 0.5),
-      w,
-      h: w * c.ratio,
-      top: H * (c.top[0] + (c.top[1] - c.top[0]) * TOP_RHYTHM[i % TOP_RHYTHM.length]),
-      segLen,
-    }));
+    return Array.from({ length: n }, (_, i) => {
+      // 천 비율 = 작품 이미지 비율 (이미지를 아직 모르면 기본 비율). 칸 너비 · 최대 높이 안에서 크게
+      const ratio = clothRatio(mainWorks[i]);
+      const w = Math.min(slot * (W < 640 ? c.clothWidthMobile : c.clothWidth), (H * c.maxHeight) / ratio);
+      return {
+        cx: left + slot * (i + 0.5),
+        w,
+        h: w * ratio,
+        top: H * (c.top[0] + (c.top[1] - c.top[0]) * TOP_RHYTHM[i % TOP_RHYTHM.length]),
+        segLen,
+      };
+    });
+  }
+
+  // 불러온 작품 이미지의 세로/가로 비율 (주소 → 비율)
+  const imageRatios = new Map();
+  function clothRatio(work) {
+    return (work && work.cover_image && imageRatios.get(work.cover_image)) || CONFIG.hang.ratio;
   }
 
   // 천장 (x, 0)에서 y=bottom까지 내려오는 줄 하나
@@ -679,25 +725,66 @@
     Composite.add(world, [...ropes.flatMap((r) => [...r.segs, r.anchor, ...r.links]), spreader]);
     const hang = { index, ...slot, ropes, spreader };
     hang.work = mainWorks[index] || null;
-    if (gl) {
-      hang.cloth = createCloth(hang);
-      if (hang.work && hang.work.cover_image) loadClothImage(hang.cloth, hang.work.cover_image);
-    }
+    if (gl) hang.cloth = createCloth(hang);
+    else hang.dom = createClothDom(hang);
+    hangs[index] = hang;                      // 이미지 로더가 이 걸이가 아직 걸려 있는지 확인한다
+    loadHangImage(hang);
     return hang;
   }
 
-  // 메인에 걸 작품: 대표 컬렉션 작품부터, 모자라면 나머지 작품 순서대로 (7단계: 관리 페이지의 "메인에 걸기"로 고름)
+  // WebGL이 없을 때: 작품 이미지(없으면 X 스티치 무늬)를 두 줄 끝에 반듯하게 걸고 CSS로 살짝 흔든다.
+  // 누르면 펼쳐 보기 (끝까지 당기기 대신 "작품 보기" 버튼)
+  function createClothDom(hang) {
+    const el = document.createElement("button");
+    el.type = "button";
+    el.className = "cloth-dom";
+    el.tabIndex = -1;                          // 키보드는 숨은 작품 링크 목록으로
+    el.style.width = hang.w + "px";
+    el.style.height = hang.h + "px";
+    el.addEventListener("click", () => openUnfold(hang));
+    stage.insertBefore(el, document.getElementById("ropes"));
+    return el;
+  }
+
+  // 메인에 걸 작품: 관리 페이지에서 "메인에 걸기"를 켠 작품을 메인 순서대로 (없으면 대표 컬렉션 작품)
   let mainWorks = [];
   async function loadMainWorks() {
-    const [collections, works] = await Promise.all([DB.collections(), DB.works()]);
-    const featured = new Set(collections.filter((c) => c.is_featured).map((c) => c.id));
-    mainWorks = [...works.filter((w) => featured.has(w.collection_id)), ...works.filter((w) => !featured.has(w.collection_id))]
-      .slice(0, CONFIG.hang.count);
+    mainWorks = await DB.mainWorks(CONFIG.hang.count);
     for (const hang of hangs) {
       hang.work = mainWorks[hang.index] || null;
-      if (hang.cloth && hang.work && hang.work.cover_image) loadClothImage(hang.cloth, hang.work.cover_image);
+      loadHangImage(hang);
     }
+    fillWorkLinks();
     dropInReturned();
+  }
+
+  // 작품 이미지: 천은 X 스티치 무늬로 먼저 걸려 있다가, 이미지를 받으면 부드럽게 바뀐다 (메인 시작을 막지 않음).
+  // 이미지 비율이 지금 천과 다르면 그 작품 걸이만 이미지 비율로 다시 건다.
+  function loadHangImage(hang) {
+    const src = hang.work && hang.work.cover_image;
+    if (!src) return;
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      if (hangs[hang.index] !== hang || !hang.work || hang.work.cover_image !== src) return;   // 그사이 다시 걸림
+      const ratio = img.naturalHeight / img.naturalWidth;
+      imageRatios.set(src, ratio);
+      if (Math.abs(hang.h / hang.w - ratio) > 0.02) {
+        removeHang(hang);
+        hangs[hang.index] = createHang(hangLayout()[hang.index], hang.index);   // createHang이 이미지를 다시 부름 (캐시)
+        return;
+      }
+      if (hang.cloth) setClothImage(hang.cloth, img);
+      if (hang.dom) hang.dom.style.backgroundImage = `url("${src}")`;
+      if (reducedMotion) renderOnce();
+    };
+    img.src = src;
+  }
+
+  // 키보드 · 스크린리더용: 걸린 작품 링크 목록
+  function fillWorkLinks() {
+    document.getElementById("sr-works").innerHTML = mainWorks
+      .map((w) => `<li><a href="${esc(workHref(w))}">작품: ${esc(w.title)}</a></li>`).join("");
   }
 
   // 당겨서 작품으로 갔다가 돌아왔으면 그 천만 위에서 내려와 다시 걸린다
@@ -710,6 +797,7 @@
   function removeHang(hang) {
     Composite.remove(world, [...hang.ropes.flatMap((r) => [...r.segs, r.anchor, ...r.links]), hang.spreader]);
     if (hang.cloth) disposeCloth(hang.cloth);
+    if (hang.dom) hang.dom.remove();
   }
 
   function buildHangs() {
@@ -754,7 +842,7 @@
     texSize: 1024,         // 텍스처 긴 변 최대(px)
   };
 
-  // WebGL 준비 (three.js). 지원하지 않으면 null → 천 대신 점선 자리 표시 (대체 화면은 8단계에서)
+  // WebGL 준비 (three.js). 지원하지 않으면 null → 천 대신 DOM 작품 이미지를 건다 (createClothDom)
   const gl = (() => {
     if (!window.THREE) return null;
     const cv = document.getElementById("cloth");
@@ -791,6 +879,8 @@
     }`;
   const CLOTH_FRAG = `
     uniform sampler2D map;
+    uniform sampler2D map2;                    // 새로 받은 작품 이미지 (mixT만큼 서서히 바뀜)
+    uniform float mixT;
     uniform vec2 lightDir;
     uniform float fade;
     varying vec2 vUv;
@@ -801,9 +891,9 @@
       float shade = clamp(0.55 + 0.45 * clamp(n.z, 0.0, 1.0) + dot(n.xy, lightDir) * 0.25, 0.35, 1.0);
       vec3 col;
       if (gl_FrontFacing) {
-        col = texture2D(map, vUv).rgb;
+        col = mix(texture2D(map, vUv).rgb, texture2D(map2, vUv).rgb, mixT);
       } else {
-        col = texture2D(map, vUv, 2.5).rgb;
+        col = mix(texture2D(map, vUv, 2.5).rgb, texture2D(map2, vUv, 2.5).rgb, mixT);
         col = mix(col, vec3(dot(col, vec3(0.299, 0.587, 0.114))), 0.3) * 0.7;
       }
       float a = 1.0 - fade;                    // 펼쳐 보는 동안 다른 천은 흐려짐 (미리 곱한 알파)
@@ -847,23 +937,27 @@
   }
 
   // 작품 이미지를 긴 변 최대 texSize로 줄여 텍스처로 (다음 단계에서 작품 데이터와 연결)
-  function loadClothImage(cloth, src) {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      const s = Math.min(1, CLOTH.texSize / Math.max(img.naturalWidth, img.naturalHeight));
-      const c = document.createElement("canvas");
-      c.width = Math.round(img.naturalWidth * s);
-      c.height = Math.round(img.naturalHeight * s);
-      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-      const tex = new THREE.CanvasTexture(c);
-      setupTexture(tex);
-      cloth.tex.dispose();
-      cloth.tex = tex;
-      cloth.image = true;
-      cloth.mat.uniforms.map.value = tex;
-    };
-    img.src = src;
+  // 작품 이미지를 긴 변 최대 texSize로 줄여 텍스처로 → 지금 무늬에서 서서히 바뀐다 (map2 + mixT, drawCloths에서 진행)
+  function setClothImage(cloth, img) {
+    const s = Math.min(1, CLOTH.texSize / Math.max(img.naturalWidth, img.naturalHeight));
+    const cv = document.createElement("canvas");
+    cv.width = Math.round(img.naturalWidth * s);
+    cv.height = Math.round(img.naturalHeight * s);
+    cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+    const tex = new THREE.CanvasTexture(cv);
+    setupTexture(tex);
+    cloth.image = true;
+    cloth.next = tex;
+    cloth.mat.uniforms.map2.value = tex;
+    cloth.mat.uniforms.mixT.value = 0;
+    if (reducedMotion) swapClothTexture(cloth);
+  }
+  function swapClothTexture(cloth) {
+    cloth.tex.dispose();
+    cloth.tex = cloth.next;
+    cloth.next = null;
+    cloth.mat.uniforms.map.value = cloth.tex;
+    cloth.mat.uniforms.mixT.value = 0;
   }
 
   function createCloth(hang) {
@@ -926,7 +1020,7 @@
 
     const tex = stitchTexture(hang);
     const mat = new THREE.ShaderMaterial({
-      uniforms: { map: { value: tex }, lightDir: { value: new THREE.Vector2(-0.6, 0.8) }, fade: { value: 0 } },
+      uniforms: { map: { value: tex }, lightDir: { value: new THREE.Vector2(-0.6, 0.8) }, fade: { value: 0 }, map2: { value: tex }, mixT: { value: 0 } },
       transparent: true,
       premultipliedAlpha: true,
       vertexShader: CLOTH_VERT,
@@ -1151,6 +1245,12 @@
       if (!c) continue;
       // 펼쳐 보는 동안 다른 천은 흐려진다
       const fadeTo = unfolded && unfolded !== hang ? 0.88 : 0;
+      // 받은 작품 이미지로 서서히 바뀜
+      if (c.next) {
+        const m = c.mat.uniforms.mixT;
+        m.value = Math.min(1, m.value + 0.04);
+        if (m.value >= 1) swapClothTexture(c);
+      }
       const u = c.mat.uniforms.fade;
       u.value += (fadeTo - u.value) * (reducedMotion ? 1 : 0.12);
       updateClothMesh(c);
@@ -1163,18 +1263,23 @@
   // ------------------------------------------------------------------
   const stageEl = stage;
   const unfoldEl = document.getElementById("unfold");
+  const ufImage = document.getElementById("uf-image");
   let unfolded = null;          // 펼쳐 보는 중인 작품 걸이
 
   const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]);
   const workHref = (work) => `work-detail.html?id=${encodeURIComponent(work.id)}`;
 
   // 펼친 천의 자리: 화면 가운데 위쪽, 천 비율 그대로 크게. 아래에 작품 정보가 온다
-  function unfoldTarget(hang) {
-    const c = hang.cloth, ratio = hang.h / hang.w;
+  function unfoldBox(hang) {
+    const ratio = hang.h / hang.w;
     const th = Math.min(H * 0.6, Math.min(W - 48, 720) * ratio);
     const tw = th / ratio;
-    const left = (W - tw) / 2;
-    const top = Math.max(56, (H - th - 150) / 2);
+    return { left: (W - tw) / 2, top: Math.max(56, (H - th - 150) / 2), tw, th };
+  }
+  function unfoldTarget(hang) {
+    const c = hang.cloth;
+    const { left, top, tw, th } = unfoldBox(hang);
     const target = new Float32Array(c.n * 2);
     for (let j = 0; j < c.ny; j++) {
       for (let i = 0; i < c.nx; i++) {
@@ -1187,10 +1292,21 @@
 
   function openUnfold(hang) {
     const c = hang.cloth;
-    if (!c || unfolded || !hang.work) return;
+    if (unfolded || !hang.work) return;
     unfolded = hang;
-    const { target, bottom } = unfoldTarget(hang);
-    c.unfold = { dir: 1, t: 0, from: c.pos.slice(), target };
+    let bottom;
+    if (c) {
+      const t = unfoldTarget(hang);
+      bottom = t.bottom;
+      c.unfold = { dir: 1, t: 0, from: c.pos.slice(), target: t.target };
+    } else {
+      // WebGL이 없을 때: 천 대신 작품 이미지를 같은 자리에 크게
+      const b = unfoldBox(hang);
+      bottom = b.top + b.th;
+      Object.assign(ufImage.style, { left: b.left + "px", top: b.top + "px", width: b.tw + "px", height: b.th + "px" });
+      ufImage.style.backgroundImage = hang.work.cover_image ? `url("${hang.work.cover_image}")` : "";
+      ufImage.hidden = false;
+    }
     const w = hang.work;
     document.getElementById("uf-meta").textContent =
       [w.year, ...(w.techniques || []).map((t) => LABELS.technique[t] || t)].filter(Boolean).join(" · ");
@@ -1207,6 +1323,13 @@
 
   function closeUnfold() {
     const hang = unfolded;
+    if (hang && !hang.cloth) {
+      ufImage.hidden = true;
+      unfolded = null;
+      stageEl.classList.remove("dim", "unfolding");
+      unfoldEl.classList.remove("show", "open");
+      return;
+    }
     if (!hang || !hang.cloth.unfold || hang.cloth.unfold.dir < 0) return;
     const u = hang.cloth.unfold;
     hang.cloth.unfold = { dir: -1, t: 0, from: hang.cloth.pos.slice(), target: u.target };
@@ -1510,7 +1633,6 @@
   let ropeColor = "";
   let pinColor = "";
   let accentColor = "";
-  let placeholderColor = "";
   const glowCanvas = document.getElementById("plus-glow");
   const gctx = glowCanvas.getContext("2d");
   const glow = { x: null, y: null, r: 0, box: null };
@@ -1557,7 +1679,6 @@
     ropeColor = cssColor("--rope");
     pinColor = cssColor("--pin");
     accentColor = cssColor("--accent");
-    placeholderColor = cssColor("--line-strong");
     glowCanvas.width = canvas.width;
     glowCanvas.height = canvas.height;
     grid = parseFloat(cs.getPropertyValue("--grid")) || 24;
@@ -1575,7 +1696,7 @@
   }
 
   // 줄: 천장 고정점 → 마디들을 부드러운 곡선으로, 줄 끝에 천을 잡는 작은 매듭.
-  // (WebGL이 없으면 천 대신 천이 걸릴 자리를 점선으로)
+  // (WebGL이 없으면 천 대신 DOM 작품 이미지를 두 줄 끝에 맞춰 건다)
   function drawHangs() {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, W, H);
@@ -1599,21 +1720,9 @@
         ctx.stroke();
       }
       const a = hang.ropes[0].end.position, b = hang.ropes[1].end.position;
-      if (!hang.cloth) {
-        // 천 자리: 두 줄 끝을 윗변으로, 그 수직 아래로 천 높이만큼
-        const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
-        const nx = -(b.y - a.y) / len * hang.h, ny = (b.x - a.x) / len * hang.h;
-        ctx.strokeStyle = placeholderColor;
-        ctx.lineWidth = 1;
-        ctx.setLineDash([4, 5]);
-        ctx.beginPath();
-        ctx.moveTo(a.x, a.y);
-        ctx.lineTo(b.x, b.y);
-        ctx.lineTo(b.x + nx, b.y + ny);
-        ctx.lineTo(a.x + nx, a.y + ny);
-        ctx.closePath();
-        ctx.stroke();
-        ctx.setLineDash([]);
+      if (hang.dom) {
+        // WebGL이 없을 때: 두 줄 끝을 윗변으로 반듯하게 건 작품 이미지
+        hang.dom.style.transform = `translate(${a.x}px, ${a.y}px) rotate(${Math.atan2(b.y - a.y, b.x - a.x)}rad)`;
       }
       ctx.fillStyle = hang.ready ? accentColor : pinColor;   // 끝까지 당기면 포인트 색 = 놓으면 열림
       if (hang.cloth && hang.cloth.mode === "falling") continue;   // 빠진 매듭은 그리지 않음

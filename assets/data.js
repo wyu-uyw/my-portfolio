@@ -90,7 +90,7 @@ const SAMPLE = {
         { src: null, caption: "질감 디테일", detail: true },
         { src: null, caption: "설치 전경" },
       ],
-      sort_order: 1, is_public: true,
+      show_on_main: true, main_order: 1, sort_order: 1, is_public: true,
     },
     {
       id: "grid-memory-02", collection_id: "grid-memory", type: "project", title: "격자의 기억 02", year: 2026,
@@ -98,7 +98,7 @@ const SAMPLE = {
       description: "예시 작업 설명입니다.",
       cover_image: null, process_images: sampleSteps("기록"),
       gallery_images: [{ src: null, caption: "전체 컷" }, { src: null, caption: "질감 디테일", detail: true }],
-      sort_order: 2, is_public: true,
+      show_on_main: true, main_order: 2, sort_order: 2, is_public: true,
     },
     {
       id: "indigo-tide-01", collection_id: "indigo-tide", type: "project", title: "쪽빛 물결 I", year: 2025,
@@ -106,7 +106,7 @@ const SAMPLE = {
       description: "예시 작업 설명입니다.",
       cover_image: null, process_images: sampleSteps("기록"),
       gallery_images: [{ src: null, caption: "전체 컷" }, { src: null, caption: "질감 디테일", detail: true }],
-      sort_order: 1, is_public: true,
+      show_on_main: true, main_order: 3, sort_order: 1, is_public: true,
     },
     {
       id: "indigo-tide-02", collection_id: "indigo-tide", type: "project", title: "쪽빛 물결 II", year: 2025,
@@ -300,6 +300,15 @@ const DB = {
   },
   async work(id) {
     return (await DB.works()).find((w) => w.id === id) || null;
+  },
+  // 메인에 천으로 걸 작품: 공개 + 메인에 걸기, 메인 순서대로. 하나도 없으면 대표 컬렉션 작품으로 대신 (스와치도 걸 수 있음)
+  async mainWorks(limit = 3) {
+    const works = await DB.works();
+    const picked = works.filter((w) => w.show_on_main)
+      .sort((a, b) => (a.main_order ?? 1e9) - (b.main_order ?? 1e9) || byOrder(a, b));
+    if (picked.length) return picked.slice(0, limit);
+    const featured = new Set((await DB.collections()).filter((c) => c.is_featured).map((c) => c.id));
+    return works.filter((w) => featured.has(w.collection_id)).slice(0, limit);
   },
   async worksInCollection(collectionId) {
     return (await DB.works("project")).filter((w) => w.collection_id === collectionId);

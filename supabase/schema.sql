@@ -35,6 +35,8 @@ create table if not exists public.works (
   process_images  jsonb not null default '[]',   -- [{ "step": "sketch|pattern|sample|handwork", "src": "...", "caption": "..." }]
   gallery_images  jsonb not null default '[]',   -- [{ "src": "...", "caption": "...", "detail": true }]
   sort_order      int  not null default 0,
+  show_on_main    boolean not null default false,   -- 메인에 천으로 걸기 (공개된 작품 중 main_order 순으로 최대 3점)
+  main_order      int,                              -- 메인에 걸리는 순서 (작은 수가 왼쪽)
   is_public       boolean not null default false,
   created_at      timestamptz not null default now()
 );
@@ -101,6 +103,10 @@ create table if not exists public.inquiries (
   created_at  timestamptz not null default now()
 );
 alter table public.inquiries add column if not exists status text not null default 'new';
+
+-- 메인 "작업실에 널린 원단": 이미 works 테이블이 있다면 이 두 줄만 실행해도 된다
+alter table public.works add column if not exists show_on_main boolean not null default false;
+alter table public.works add column if not exists main_order   int;
 
 -- 이미 예전 버전으로 테이블을 만들었다면 값 검사 규칙만 새로 바꾼다 (manipulation 기법, 소장처 CV 섹션)
 alter table public.works drop constraint if exists works_techniques_check;
