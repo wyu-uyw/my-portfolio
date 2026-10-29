@@ -220,7 +220,7 @@
 
   /* ---------- 좌측 회전 레버 ---------- */
   /* 피벗을 중심으로 한 반지름 80px 원이 잡기 영역 (clip-path로 원 밖은 아래 화면에 양보) */
-  :root { --lever-left: 48px; }
+  :root { --lever-left: 48px; --lever-len: 77px; }
   #lever {
     --lever-hit: 96px;
     position: fixed;
@@ -238,8 +238,28 @@
     outline: none;
   }
   @media (max-width: 640px) {
-    :root { --lever-left: 24px; }
+    :root { --lever-left: 24px; --lever-len: 58px; }
   }
+  /* 레버 위 라벨: 레버를 돌릴 줄 몰라도 글자를 누르면 전환. 회전판 밖이라 돌지 않는다.
+     글자 시작이 레버 선과 같은 x에 오도록 왼쪽 여백(=잡기 여백)만큼 당긴다. */
+  #lever-label {
+    position: fixed;
+    z-index: 5;
+    left: calc(var(--lever-left) - 12px);
+    top: calc(50% - var(--lever-len) - 48px);
+    padding: 12px;
+    border: 0;
+    background: none;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.24em;
+    color: var(--text-soft);
+    cursor: pointer;
+    transition: color 0.2s;
+  }
+  #lever-label:hover { color: var(--text); }
+  #lever-label:focus-visible { outline: 2px solid var(--accent); outline-offset: -4px; border-radius: 6px; }
   #lever svg { display: block; width: 100%; height: 100%; overflow: visible; }
   #lever .lv-line { stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; transition: stroke-width 0.15s; }
   #lever:hover .lv-line, #lever.dragging .lv-line { stroke-width: 2; }
@@ -459,7 +479,7 @@
           </ul>
         </section>
       </div>
-      <p class="sm-hint">레버를 다시 세우면 메인으로 돌아가요</p>
+      <p class="sm-hint">레버를 다시 세우거나 MAIN을 누르면 메인으로 돌아가요</p>
       <a class="sm-admin" href="admin.html" rel="nofollow">admin</a>
     </div>
   </nav>
@@ -471,6 +491,7 @@
     <a class="draft-btn" href="plan-draft.html">plan-draft</a>
   </div>
 
+  <button id="lever-label" type="button" aria-label="사이트맵 열기">SITEMAP</button>
   <div id="lever" role="slider" tabindex="0" aria-label="레버" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
     <svg viewBox="-96 -96 192 192" aria-hidden="true">
       <circle class="lv-ring" r="8"></circle>
@@ -1559,8 +1580,18 @@
     lever.rest = end;
     lever.target = end;
     animateLever();
+    syncLeverLabel();
     try { localStorage.setItem(LEVER.storageKey, String(end / 180)); } catch (_) {}
   }
+
+  // 레버 위 라벨: 메인에선 SITEMAP, 사이트맵에선 MAIN. 누르면 레버를 돌린 것과 같은 전환('탁' 넘어가기 포함)
+  const leverLabel = document.getElementById("lever-label");
+  function syncLeverLabel() {
+    const onMap = lever.rest === 180;
+    leverLabel.textContent = onMap ? "MAIN" : "SITEMAP";
+    leverLabel.setAttribute("aria-label", onMap ? "메인으로 돌아가기" : "사이트맵 열기");
+  }
+  leverLabel.addEventListener("click", () => commitLever(lever.rest === 0 ? 180 : 0));
 
   // 피벗 기준 포인터 각도 (12시 = 0°, 시계 방향). 왼쪽 반원은 가까운 끝(0° 또는 180°)으로.
   function pointerAngle(e) {
@@ -1625,6 +1656,7 @@
     try { saved = parseFloat(localStorage.getItem(LEVER.storageKey)) || 0; } catch (_) {}
     lever.rest = lever.target = saved >= 0.5 ? 180 : 0;   // 예전의 중간값도 가까운 끝으로
     setLeverAngle(lever.target);
+    syncLeverLabel();
   })();
   leverMQ.addEventListener("change", drawLever);
 
