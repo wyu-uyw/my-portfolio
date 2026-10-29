@@ -622,18 +622,12 @@
     const spreader = Constraint.create({ bodyA: ropes[0].end, bodyB: ropes[1].end, length: slot.w, stiffness: 1, damping: 0.05 });
     Composite.add(world, [...ropes.flatMap((r) => [...r.segs, r.anchor, ...r.links]), spreader]);
     const hang = { index, ...slot, ropes, spreader };
-    setHangWork(hang, mainWorks[index] || null);
+    hang.work = mainWorks[index] || null;
     if (gl) {
       hang.cloth = createCloth(hang);
       if (hang.work && hang.work.cover_image) loadClothImage(hang.cloth, hang.work.cover_image);
     }
     return hang;
-  }
-
-  // 걸린 작품 → 소재(물성)
-  function setHangWork(hang, work) {
-    hang.work = work;
-    hang.material = materialOf(work);
   }
 
   // 메인에 걸 작품: 대표 컬렉션 작품부터, 모자라면 나머지 작품 순서대로 (7단계: 관리 페이지의 "메인에 걸기"로 고름)
@@ -644,7 +638,7 @@
     mainWorks = [...works.filter((w) => featured.has(w.collection_id)), ...works.filter((w) => !featured.has(w.collection_id))]
       .slice(0, CONFIG.hang.count);
     for (const hang of hangs) {
-      setHangWork(hang, mainWorks[hang.index] || null);
+      hang.work = mainWorks[hang.index] || null;
       if (hang.cloth && hang.work && hang.work.cover_image) loadClothImage(hang.cloth, hang.work.cover_image);
     }
   }
@@ -674,11 +668,14 @@
     gravity: 1800,         // px/s²
     iterations: 4,         // 서브스텝마다 제약 반복 횟수 — 높을수록 천이 덜 늘어남 (고무 · 젤리 느낌 방지)
     shear: 0.9,            // 전단(대각선) 강성 — 구조(상하좌우)는 1
-    weight: 0.02,          // 천 무게가 각 줄 끝을 아래로 당기는 힘 (Matter 힘 단위, 소재 무게 배율이 곱해짐)
+    bend: 0.08,            // 굽힘(한 칸 건너뛰기) 강성 — 낮을수록 얇고 부드럽게 휨
+    damping: 0.02,         // 서브스텝마다 속도 감쇠 (공기 저항) — 높을수록 펄럭임이 빨리 가라앉음
+    weight: 0.02,          // 천 무게가 각 줄 끝을 아래로 당기는 힘 (Matter 힘 단위)
     tug: 0.002,            // 천이 늘어난 만큼 줄 끝을 끌어당기는 정도 → 천을 당기면 줄도 따라 늘어남
     tether: 1.12,          // 나머지 점 묶음 여유 — 크게 늘어나 고무처럼 튕기는 것만 막는다
+    restore: 0.012,        // 복원력: 손 뗀 뒤 서브스텝마다 반듯하게 걸린 자리로 다가가는 비율
     gravityFree: 0.3,      // 손 뗀 뒤 중력 배율 — 접힌 자락이 중력에 눌려 처진 채 남지 않고 복원력에 끝까지 펴지게
-    wind: 260,             // 바람 세기(px/s², 소재 바람 반응이 곱해짐) — 살아 있는 느낌만, 이미지를 가리지 않게
+    wind: 260,             // 바람 세기(px/s²) — 살아 있는 느낌만, 이미지를 가리지 않게
     restoreHeld: 0.0006,   // 잡고 있는 동안의 복원력 (만지는 걸 방해하지 않게 약하게)
     grabFollow: 0.35,      // 잡은 점이 포인터를 따라가는 정도 (서브스텝마다)
     jitter: 0.6,           // 처음 z 흔들림(px) — 평면에만 머물지 않고 앞뒤로 접힐 수 있게
@@ -686,41 +683,6 @@
     ballPush: 0.01,        // 천을 밀어낸 만큼 구슬이 받는 반작용
     texSize: 1024,         // 텍스처 긴 변 최대(px)
   };
-
-  // 섬유별 물성 — 작품의 섬유 조성(fiber)에서 처음 나오는 소재로 정한다. 관리 페이지에서 고른 cloth_material이 있으면 그것을 우선.
-  //   weight  무게 (중력 · 줄을 당기는 힘 배율)    bend     굽힘 강성 (낮을수록 얇고 부드럽게 휨)
-  //   damping 감쇠 (공기 저항, 서브스텝마다)       restore  복원력 (손 뗀 뒤 펴지는 빠르기)
-  //   wind    바람 반응 배율
-  const MATERIALS = {
-    silk:      { weight: 0.6, bend: 0.03, damping: 0.012, restore: 0.008, wind: 1.6 },
-    cotton:    { weight: 1.0, bend: 0.08, damping: 0.02,  restore: 0.012, wind: 1.0 },
-    linen:     { weight: 1.0, bend: 0.12, damping: 0.02,  restore: 0.012, wind: 1.0 },
-    wool:      { weight: 1.5, bend: 0.1,  damping: 0.035, restore: 0.018, wind: 0.5 },
-    canvas:    { weight: 1.6, bend: 0.3,  damping: 0.04,  restore: 0.02,  wind: 0.4 },
-    synthetic: { weight: 0.7, bend: 0.08, damping: 0.014, restore: 0.012, wind: 1.4 },
-  };
-  const MATERIAL_WORDS = {
-    silk: ["실크", "명주", "silk"],
-    cotton: ["면", "코튼", "cotton"],
-    linen: ["린넨", "리넨", "마", "모시", "삼베", "linen", "hemp", "ramie"],
-    wool: ["울", "모직", "캐시미어", "wool", "cashmere"],
-    canvas: ["캔버스", "데님", "광목", "canvas", "denim"],
-    synthetic: ["폴리", "합성", "나일론", "레이온", "polyester", "poly", "nylon", "synthetic", "rayon"],
-  };
-  // 섬유 조성 문자열에서 가장 먼저 나오는 소재 (예: "면 70%, 린넨 30%" → cotton). 한 글자 낱말(면 · 마 · 울)은 따로 떨어져 있을 때만
-  function materialOf(work) {
-    if (work && MATERIALS[work.cloth_material]) return work.cloth_material;
-    const text = String((work && work.fiber) || "").toLowerCase();
-    let best = "cotton", at = Infinity;
-    for (const [key, words] of Object.entries(MATERIAL_WORDS)) {
-      for (const w of words) {
-        const re = w.length === 1 ? new RegExp(`(^|[^가-힣])${w}(?![가-힣])`) : new RegExp(w);
-        const m = re.exec(text);
-        if (m && m.index + m[0].indexOf(w) < at) { at = m.index + m[0].indexOf(w); best = key; }
-      }
-    }
-    return best;
-  }
 
   // WebGL 준비 (three.js). 지원하지 않으면 null → 천 대신 점선 자리 표시 (대체 화면은 8단계에서)
   const gl = (() => {
@@ -851,7 +813,7 @@
     const pins = [0, nx - 1];                    // 윗변 양 끝 = 두 줄 끝
     for (const p of pins) invM[p] = 0;
 
-    // 제약: 구조(상하좌우) · 전단(대각선) · 굽힘(한 칸 건너뛰기). 길이는 반듯한 상태 기준, 마지막 칸은 종류(0 구조 · 1 전단 · 2 굽힘 → 강성은 소재에서)
+    // 제약: 구조(상하좌우) · 전단(대각선) · 굽힘(한 칸 건너뛰기). 길이는 반듯한 상태 기준, 마지막 칸은 종류(0 구조 · 1 전단 · 2 굽힘)
     const cons = [];
     const add = (i1, j1, i2, j2, type) => {
       if (i2 < 0 || i2 >= nx || j2 >= ny) return;
@@ -946,13 +908,12 @@
   // 서브스텝 1회: 적분(중력 · 바람) → 줄 끝 고정 → 제약 반복 → 복원력 → 구슬 밀어내기
   function stepCloth(hang, dtSec) {
     const c = hang.cloth;
-    const m = MATERIALS[hang.material];
     const { pos, prev, invM, cons, pins } = c;
     const held = grab && grab.hang === hang;
     const dt2 = dtSec * dtSec;
-    const g = CLOTH.gravity * m.weight * (held ? 1 : CLOTH.gravityFree) * dt2;
-    const wind = reducedMotion ? 0 : CLOTH.wind * m.wind * dt2;
-    const keep = 1 - m.damping;
+    const g = CLOTH.gravity * (held ? 1 : CLOTH.gravityFree) * dt2;
+    const wind = reducedMotion ? 0 : CLOTH.wind * dt2;
+    const keep = 1 - CLOTH.damping;
     for (let p = 0, k = 0; p < c.n; p++, k += 3) {
       if (!invM[p]) continue;
       for (let d = 0; d < 3; d++) {
@@ -986,7 +947,7 @@
     }
     // 줄 끝 매듭이 천에 끌려가는 양 (늘어난 제약의 장력 합) → weighRopes가 줄 끝에 힘으로 전달
     const tug = c.tug.fill(0);
-    const stiff = [1, CLOTH.shear, m.bend];      // 제약 종류별 강성 (구조 · 전단 · 굽힘)
+    const stiff = [1, CLOTH.shear, CLOTH.bend];      // 제약 종류별 강성 (구조 · 전단 · 굽힘)
     for (let it = 0; it < CLOTH.iterations; it++) {
       for (let q = 0; q < cons.length; q += 4) {
         const p1 = cons[q], p2 = cons[q + 1];
@@ -1032,7 +993,7 @@
       const ul = Math.hypot(ux, uy) || 1;
       ux /= ul; uy /= ul;
       const vx = -uy, vy = ux;                    // 윗변에 수직, 아래쪽
-      const k = held ? CLOTH.restoreHeld : m.restore;
+      const k = held ? CLOTH.restoreHeld : CLOTH.restore;
       const home = c.home;
       for (let p = 0, q = 0; p < c.n; p++, q += 3) {
         if (!invM[p]) continue;
@@ -1073,7 +1034,7 @@
       const c = hang.cloth;
       if (!c) continue;
       hang.ropes.forEach((r, s) => {
-        Body.applyForce(r.end, r.end.position, { x: c.tug[s * 2] * CLOTH.tug, y: CLOTH.weight * MATERIALS[hang.material].weight + c.tug[s * 2 + 1] * CLOTH.tug });
+        Body.applyForce(r.end, r.end.position, { x: c.tug[s * 2] * CLOTH.tug, y: CLOTH.weight + c.tug[s * 2 + 1] * CLOTH.tug });
       });
     }
   }
