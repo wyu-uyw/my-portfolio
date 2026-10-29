@@ -551,7 +551,8 @@
       clothWidth: 0.66,      // 칸 폭 대비 천 너비
       clothWidthMobile: 0.86, // 모바일(<640)에서는 칸이 좁아 천을 칸에 더 꽉 차게
       maxHeight: 0.45,       // 천 최대 높이 (화면 높이 비율)
-      ratio: 1.25,           // 천 세로/가로 (작품 이미지가 붙기 전 기본값)
+      ratio: 1.25,           // 천 세로/가로 = Work 페이지 썸네일과 같은 고정 비율 (작품 4:5)
+      ratioSwatch: 1,        // 스와치는 Work의 스와치 그리드처럼 정사각
       top: [0.07, 0.3],      // 천 윗변 높이 범위 (화면 높이 비율) — 칸마다 높이를 크게 달리해 리듬을 만든다
     },
     rope: {
@@ -678,7 +679,7 @@
     const slot = (W - left) / n;
     const segLen = CONFIG.rope.segmentLength * Math.min(1.15, Math.max(0.6, H / 900));
     return Array.from({ length: n }, (_, i) => {
-      // 천 비율 = 작품 이미지 비율 (이미지를 아직 모르면 기본 비율). 칸 너비 · 최대 높이 안에서 크게
+      // 천 비율 = 썸네일 비율 (작품 4:5, 스와치 1:1). 칸 너비 · 최대 높이 안에서 크게
       const ratio = clothRatio(mainWorks[i]);
       const w = Math.min(slot * (W < 640 ? c.clothWidthMobile : c.clothWidth), (H * c.maxHeight) / ratio);
       return {
@@ -691,10 +692,10 @@
     });
   }
 
-  // 불러온 작품 이미지의 세로/가로 비율 (주소 → 비율)
-  const imageRatios = new Map();
+  // 천은 Work 페이지 썸네일처럼 고정 비율 — 이미지 비율이 제각각이어도 튀어나간 부분은 가운데 기준으로 잘린다.
+  // (전체 사진은 작품 상세에서)
   function clothRatio(work) {
-    return (work && work.cover_image && imageRatios.get(work.cover_image)) || CONFIG.hang.ratio;
+    return work && work.type === "swatch" ? CONFIG.hang.ratioSwatch : CONFIG.hang.ratio;
   }
 
   // 천장 (x, 0)에서 y=bottom까지 내려오는 줄 하나
@@ -750,7 +751,14 @@
   let mainWorks = [];
   async function loadMainWorks() {
     mainWorks = await DB.mainWorks(CONFIG.hang.count);
-    for (const hang of hangs) {
+    const layout = hangLayout();
+    for (const hang of [...hangs]) {
+      // 스와치처럼 썸네일 비율이 다르면 그 걸이만 다시 건다 (createHang이 작품 · 이미지를 붙임)
+      if (Math.abs(layout[hang.index].h - hang.h) > 0.5) {
+        removeHang(hang);
+        createHang(layout[hang.index], hang.index);
+        continue;
+      }
       hang.work = mainWorks[hang.index] || null;
       loadHangImage(hang);
     }
@@ -759,7 +767,6 @@
   }
 
   // 작품 이미지: 천은 X 스티치 무늬로 먼저 걸려 있다가, 이미지를 받으면 부드럽게 바뀐다 (메인 시작을 막지 않음).
-  // 이미지 비율이 지금 천과 다르면 그 작품 걸이만 이미지 비율로 다시 건다.
   function loadHangImage(hang) {
     const src = hang.work && hang.work.cover_image;
     if (!src) return;
@@ -767,14 +774,7 @@
     img.crossOrigin = "anonymous";
     img.onload = () => {
       if (hangs[hang.index] !== hang || !hang.work || hang.work.cover_image !== src) return;   // 그사이 다시 걸림
-      const ratio = img.naturalHeight / img.naturalWidth;
-      imageRatios.set(src, ratio);
-      if (Math.abs(hang.h / hang.w - ratio) > 0.02) {
-        removeHang(hang);
-        hangs[hang.index] = createHang(hangLayout()[hang.index], hang.index);   // createHang이 이미지를 다시 부름 (캐시)
-        return;
-      }
-      if (hang.cloth) setClothImage(hang.cloth, img);
+      if (hang.cloth) setClothImage(hang.cloth, img, hang.h / hang.w);
       if (hang.dom) hang.dom.style.backgroundImage = `url("${src}")`;
       if (reducedMotion) renderOnce();
     };
@@ -937,13 +937,19 @@
   }
 
   // 작품 이미지를 긴 변 최대 texSize로 줄여 텍스처로 (다음 단계에서 작품 데이터와 연결)
-  // 작품 이미지를 긴 변 최대 texSize로 줄여 텍스처로 → 지금 무늬에서 서서히 바뀐다 (map2 + mixT, drawCloths에서 진행)
-  function setClothImage(cloth, img) {
-    const s = Math.min(1, CLOTH.texSize / Math.max(img.naturalWidth, img.naturalHeight));
+  // 작품 이미지를 천 비율로 잘라 긴 변 최대 texSize로 줄여 텍스처로 → 지금 무늬에서 서서히 바뀐다 (map2 + mixT, drawCloths에서 진행)
+  // 썸네일처럼 천 비율(ratio = 세로/가로)에 맞춰 가운데를 기준으로 튀어나간 부분을 자른다 (CSS object-fit: cover와 같음).
+  // 색은 건드리지 않고 그대로 옮긴다.
+  function setClothImage(cloth, img, ratio) {
+    const iw = img.naturalWidth, ih = img.naturalHeight;
+    let sw = iw, sh = iw * ratio;                  // 이미지에서 잘라 올 영역
+    if (sh > ih) { sh = ih; sw = ih / ratio; }
+    const sx = (iw - sw) / 2, sy = (ih - sh) / 2;
+    const s = Math.min(1, CLOTH.texSize / Math.max(sw, sh));
     const cv = document.createElement("canvas");
-    cv.width = Math.round(img.naturalWidth * s);
-    cv.height = Math.round(img.naturalHeight * s);
-    cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+    cv.width = Math.round(sw * s);
+    cv.height = Math.round(sh * s);
+    cv.getContext("2d").drawImage(img, sx, sy, sw, sh, 0, 0, cv.width, cv.height);
     const tex = new THREE.CanvasTexture(cv);
     setupTexture(tex);
     cloth.image = true;
