@@ -148,28 +148,13 @@
     -webkit-user-select: none;
     -webkit-touch-callout: none;
   }
-  #ropes {
+  /* 가로 빨랫줄 */
+  #line {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
   }
-  .rope { position: absolute; inset: 0; pointer-events: none; }
-  .letter {
-    position: absolute;
-    left: 0;
-    top: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: var(--font);
-    font-weight: 300;
-    line-height: 1;
-    color: color-mix(in srgb, var(--text), var(--accent) calc(var(--p, 0) * 100%));
-    opacity: calc(1 - var(--p, 0) * 0.2);
-    will-change: transform;
-  }
-  .rope.ready .letter { color: var(--accent); opacity: 1; }
 
   /* ---------- 리퀴드 글래스 구슬 ---------- */
   #glass {
@@ -298,7 +283,7 @@
   #world.flip #sitemap { z-index: 3; }               /* 절반 넘게 돌면 사이트맵이 위로 */
   /* 두 면이 + 격자를 함께 쓰느라 투명하므로, 돌아가는 동안 메인 내용은 후반에 사라지고 사이트맵 내용은 전반에 나타난다.
      (#stage 전체가 아니라 요소마다 투명도를 줘서 유리 구슬의 backdrop-filter가 깨지지 않게) */
-  #bg, .corner.bl, #ropes, #letters, #glass { opacity: var(--main-a, 1); }
+  #bg, .corner.bl, #line, #glass { opacity: var(--main-a, 1); }
   .sm-inner { opacity: var(--map-a, 0); }
   .sm-inner { position: relative; max-width: 1040px; }
   .sm-kicker { margin: 0 0 28px; font-size: 12px; font-weight: 500; letter-spacing: 0.24em; color: var(--accent); }
@@ -341,52 +326,6 @@
   }
   #page-fade.on { opacity: 1; }
 
-  /* ---------- 준비 중 오버레이 ---------- */
-  #overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 10;
-    display: grid;
-    place-items: center;
-    padding: 24px 16px;
-    background: var(--overlay-bg);
-    -webkit-backdrop-filter: blur(24px) saturate(1.4);
-    backdrop-filter: blur(24px) saturate(1.4);
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.45s ease, visibility 0s linear 0.45s;
-  }
-  #overlay.open {
-    opacity: 1;
-    visibility: visible;
-    transition: opacity 0.45s ease, visibility 0s;
-  }
-  .ov-inner { text-align: center; max-width: 520px; }
-  .ov-kicker { margin: 0 0 8px; font-size: 13px; letter-spacing: 0.24em; color: var(--text-soft); font-weight: 500; }
-  #ov-title {
-    margin: 0;
-    font-weight: 300;
-    font-size: clamp(56px, 16vw, 160px);
-    line-height: 0.95;
-    letter-spacing: 0.04em;
-    overflow-wrap: anywhere;
-  }
-  .ov-desc { margin: 16px 0 28px; color: var(--text-soft); font-size: 15px; }
-  #ov-close {
-    font: inherit;
-    font-size: 14px;
-    font-weight: 500;
-    letter-spacing: 0.04em;
-    padding: 12px 22px;
-    border-radius: 999px;
-    border: 1px solid currentColor;
-    background: transparent;
-    color: var(--text);
-    cursor: pointer;
-  }
-  #ov-close:hover { background: var(--text); color: var(--bg); }
-  #ov-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-
   /* ---------- 접근성 ---------- */
   .sr-only {
     position: absolute !important;
@@ -409,16 +348,18 @@
     border-radius: 8px;
     font-weight: 600;
   }
-
-  @media (prefers-reduced-motion: reduce) {
-    #overlay, #overlay.open { transition: none; }
-  }
 </style>
 </head>
 <body>
   <h1 class="sr-only">Portfolio</h1>
+  <!-- 키보드·스크린리더용 메뉴 (화면에서는 사이트맵 레버가 길 찾기를 맡는다) -->
   <nav class="sr-nav" aria-label="메인 메뉴">
-    <ul id="sr-list" class="sr-only"></ul>
+    <ul class="sr-only">
+      <li><a href="work.html">Work</a></li>
+      <li><a href="journal.html">Journal</a></li>
+      <li><a href="about.html">About</a></li>
+      <li><a href="contact.html">Contact</a></li>
+    </ul>
   </nav>
 
   <div id="world">
@@ -434,12 +375,11 @@
       <p class="p-name" id="p-name"></p>
       <p class="p-meta"><b id="p-email"></b><br><span id="p-intro"></span></p>
     </div>
-    <p id="hint" aria-hidden="true" style="margin:0">줄을 끝까지 당겼다 놓으면 열려요 · 유리구슬은 잡고 던질 수 있어요</p>
+    <p id="hint" aria-hidden="true" style="margin:0">유리구슬은 잡고 던질 수 있어요 · 메뉴는 왼쪽 SITEMAP</p>
   </footer>
 
   <div id="stage" aria-hidden="true">
-    <canvas id="ropes"></canvas>
-    <div id="letters"></div>
+    <canvas id="line"></canvas>
     <div id="glass"></div>
   </div>
 
@@ -504,15 +444,6 @@
 
   <div id="page-fade" aria-hidden="true"></div>
 
-  <div id="overlay" role="dialog" aria-modal="true" aria-labelledby="ov-title">
-    <div class="ov-inner">
-      <p class="ov-kicker">준비 중</p>
-      <h2 id="ov-title"></h2>
-      <p class="ov-desc">이 페이지는 곧 열릴 예정이에요.</p>
-      <button id="ov-close" type="button">돌아가기</button>
-    </div>
-  </div>
-
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
     <filter id="lens-filter" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
       <feImage id="lens-map" x="0" y="0" width="140" height="140" preserveAspectRatio="none" result="map" />
@@ -524,23 +455,18 @@
   <script src="assets/data.js"></script>
   <script>
   // ===================================================================
-  // 설정 — 메뉴는 이 배열만 수정하면 줄/글자가 자동 생성된다.
-  // (2단계: Supabase menu_items 테이블에서 불러와 menus를 대체)
+  // 설정 — 메인은 "작업실에 널린 원단": 가로 빨랫줄 1개 + (다음 단계) 작품 천.
+  // 길 찾기는 왼쪽 사이트맵 레버가 맡는다.
   // ===================================================================
   const CONFIG = {
-    menus: [
-      { label: "WORK",    href: "work.html" },
-      { label: "JOURNAL", href: "journal.html" },
-      { label: "ABOUT",   href: "about.html" },
-      { label: "CONTACT", href: "contact.html" },
-    ],
-    rope: {
-      segments: 12,          // 줄 마디 수
-      segmentLength: 14,     // 마디 길이(px), 화면 높이에 따라 비례 조정
-      stiffness: 1,          // 마디 연결 강성 (기획 0.9 → 구슬 통과 방지를 위해 1)
+    line: {
+      height: 0.18,          // 빨랫줄 높이 (화면 높이 비율)
+      sag: 0.035,            // 가운데 처짐 (줄 길이 대비)
+      segmentLength: 16,     // 마디 간격(px) — 마디 반지름 = 간격의 절반 → 틈 없음 (구슬이 빠지지 않게)
+      stiffness: 1,          // 마디 연결 강성
       damping: 0.05,         // 흔들림 감쇠
-      anchorStiffness: 0.03, // 천장 고정점 스프링 강성 (낮을수록 아래로 잘 늘어남)
-      pullThreshold: 160,    // 기본 위치에서 이만큼(px) 아래로 당기면 페이지 열림
+      anchorStiffness: 0.9,  // 양 끝 벽 고정 강성
+      width: 1.25,           // 그리는 두께(px)
     },
     glass: {
       radius: 70,            // 구슬 반지름(px), 모바일에서는 화면 폭 비례로 축소
@@ -569,10 +495,7 @@
   applyMainSettings(DB.cachedSettings());
   DB.settings().then(applyMainSettings);
 
-  const CAT = { WALL: 0x1, ROPE: 0x2, BALL: 0x4 };
-  const FONT_SCALE = 0.95;   // 보이는 글자 크기 배율 (물리 바디 크기는 그대로)
-  // 비즈발: 글자(구슬) 크기 배율, 글자 사이 실 마디 수, 그 마디 간격 배율, 글자 잡기 여유 반경(px)
-  const BEAD = { size: 0.5, gapSegs: 3, gapScale: 0.8, hitPad: 18 };
+  const CAT = { WALL: 0x1, LINE: 0x2, BALL: 0x4 };
   // 구슬 주변 + 패턴: 밝기 범위(구슬 반지름 배수), 따라오는 lerp, 중심에서의 최대 확대 배율
   const GLOW = { range: 2.5, follow: 0.15, maxScale: 2.2 };
   const PLUS_SIZE = 7;       // 기본 + 크기(px)
@@ -581,11 +504,9 @@
     navigator.userAgentData.brands.some((b) => /Chromium/i.test(b.brand)));
 
   const stage = document.getElementById("stage");
-  const canvas = document.getElementById("ropes");
+  const canvas = document.getElementById("line");
   const ctx = canvas.getContext("2d");
-  const lettersEl = document.getElementById("letters");
   const glassEl = document.getElementById("glass");
-  const overlay = document.getElementById("overlay");
   const pageFade = document.getElementById("page-fade");
 
   // 배색 프리셋 (assets/theme.js). 하위 페이지와 같은 localStorage 키를 쓴다.
@@ -612,29 +533,14 @@
   let W = window.innerWidth;
   let H = window.innerHeight;
   let walls = [];
-  let ropes = [];
+  let line = null;          // { a, b, segs, anchors, links }
   let ball = null;
   let ballR = 0;
-  let grab = null;          // { constraint, body, rope, pointerId }
-  let openRope = null;      // 오버레이가 열린 상태에서 끊어진 줄
+  let grab = null;          // { constraint, body, pointerId }
 
   // ------------------------------------------------------------------
   // 크기 계산
   // ------------------------------------------------------------------
-  function metrics() {
-    const n = CONFIG.menus.length;
-    const left = leverZone();                 // 왼쪽 레버 영역은 비워 둔다
-    const spacing = (W - left) / (n + 1);
-    const scale = Math.min(1.15, Math.max(0.6, H / 900));
-    const segLen = CONFIG.rope.segmentLength * scale;
-    const longest = Math.max(...CONFIG.menus.map((m) => m.label.length));
-    // 가장 긴 메뉴(줄 + 글자 + 글자 사이 실)가 화면 높이의 ~85% 안에 들어오도록 폰트 크기 제한
-    const threadLen = (CONFIG.rope.segments + (longest - 1) * BEAD.gapSegs * BEAD.gapScale) * segLen;
-    const byHeight = (H * 0.85 - threadLen) / (longest * 0.9);
-    const font = Math.max(12, Math.min(Math.min(64, H * 0.06, spacing * 0.75 / 0.72) * BEAD.size, byHeight));
-    return { n, left, spacing, segLen, font, lw: font * 0.72, lh: font * 0.9 };
-  }
-
   function glassRadius() {
     return Math.round(Math.max(36, Math.min(CONFIG.glass.radius, W * 0.12, H * 0.12)));
   }
@@ -656,108 +562,46 @@
   }
 
   // ------------------------------------------------------------------
-  // 메뉴 줄 + 세로 글자
+  // 가로 빨랫줄 — 왼쪽 레버 영역 끝에서 오른쪽 벽까지, 양 끝 고정 · 가운데가 처진 사슬.
+  // 구슬과 충돌하고 구슬이 줄 위에 걸칠 수 있다. (다음 단계: 천을 집게로 이 마디들에 고정)
   // ------------------------------------------------------------------
-  function createRope(menu, index) {
-    const m = metrics();
-    const ax = m.left + m.spacing * (index + 1);
-    const segR = m.segLen / 2;               // 마디 반지름 = 간격의 절반 → 틈 없음
-    const group = Body.nextGroup(true);       // 같은 줄끼리는 충돌하지 않음
-    const filter = { group, category: CAT.ROPE, mask: CAT.WALL | CAT.ROPE | CAT.BALL };
+  function createLine() {
+    const c = CONFIG.line;
+    const a = { x: leverZone(), y: Math.round(H * c.height) };
+    const b = { x: W, y: a.y };
+    const span = b.x - a.x;
+    const sag = span * c.sag;
+    const n = Math.max(8, Math.round(span / c.segmentLength));
+    // 처음부터 처진 모양(포물선)으로 놓고, 마디 사이 길이를 그대로 고정 → 줄 전체 길이가 일정해 거의 출렁이지 않고 시작
+    const pts = [];
+    for (let i = 0; i <= n; i++) {
+      const t = i / n;
+      pts.push({ x: a.x + span * t, y: a.y + 4 * sag * t * (1 - t) });
+    }
+    const segR = span / n / 2;               // 마디 반지름 = 간격의 절반 → 틈 없음
+    const filter = { group: Body.nextGroup(true), category: CAT.LINE, mask: CAT.WALL | CAT.BALL };
     const bodyOpts = { collisionFilter: filter, frictionAir: 0.02, density: 0.02, friction: 0.3 };
+    const segs = pts.slice(1, -1).map((p) => Bodies.circle(p.x, p.y, segR, bodyOpts));
+    const dist = (p, q) => Math.hypot(p.x - q.x, p.y - q.y);
 
-    const segs = [];
-    let y = 0;
-    for (let i = 0; i < CONFIG.rope.segments; i++) {
-      y += m.segLen;
-      segs.push(Bodies.circle(ax, y, segR, bodyOpts));
-    }
-
-    const wrap = document.createElement("div");
-    wrap.className = "rope";
-    lettersEl.appendChild(wrap);
-
-    // 글자 = 실에 꿴 구슬. 글자 사이에도 실 마디를 넣어 구슬이 틈으로 빠지지 않게 한다.
-    const gapStep = m.segLen * BEAD.gapScale; // 글자 사이 실 마디 간격 (마디 반지름은 segR 유지 → 틈 없음)
-    const letters = [];
-    const gaps = [];                          // gaps[i] = letters[i]와 letters[i+1] 사이 실 마디
-    const els = [];
-    y += segR + m.lh / 2;
-    for (const ch of menu.label) {
-      if (letters.length) {
-        const gap = [];
-        y -= m.lh / 2;
-        for (let g = 0; g < BEAD.gapSegs; g++) {
-          y += g === 0 ? gapStep / 2 : gapStep;
-          gap.push(Bodies.circle(ax, y, segR, bodyOpts));
-        }
-        gaps.push(gap);
-        y += gapStep / 2 + m.lh / 2;
-      }
-      letters.push(Bodies.rectangle(ax, y, m.lw, m.lh, { ...bodyOpts, chamfer: { radius: m.lw * 0.12 } }));
-      const el = document.createElement("span");
-      el.className = "letter";
-      el.textContent = ch;
-      el.style.width = m.lw + "px";
-      el.style.height = m.lh + "px";
-      el.style.fontSize = m.font * FONT_SCALE + "px";
-      wrap.appendChild(el);
-      els.push(el);
-      y += m.lh;
-    }
-    const nominalY = y - m.lh / 2;
-
-    const k = CONFIG.rope.stiffness;
-    const d = CONFIG.rope.damping;
-    const anchor = Constraint.create({
-      pointA: { x: ax, y: 0 }, bodyB: segs[0], length: m.segLen,
-      stiffness: CONFIG.rope.anchorStiffness, damping: 0.08,
-    });
+    const anchors = [
+      Constraint.create({ pointA: a, bodyB: segs[0], length: dist(a, pts[1]), stiffness: c.anchorStiffness, damping: 0.08 }),
+      Constraint.create({ pointA: b, bodyB: segs[segs.length - 1], length: dist(b, pts[n - 1]), stiffness: c.anchorStiffness, damping: 0.08 }),
+    ];
     const links = [];
     for (let i = 1; i < segs.length; i++) {
-      links.push(Constraint.create({ bodyA: segs[i - 1], bodyB: segs[i], length: m.segLen, stiffness: k, damping: d }));
-    }
-    links.push(Constraint.create({
-      bodyA: segs[segs.length - 1], bodyB: letters[0], pointB: { x: 0, y: -m.lh / 2 },
-      length: segR, stiffness: k, damping: d,
-    }));
-    for (let i = 1; i < letters.length; i++) {
-      const gap = gaps[i - 1];
       links.push(Constraint.create({
-        bodyA: letters[i - 1], pointA: { x: 0, y: m.lh / 2 }, bodyB: gap[0],
-        length: gapStep / 2, stiffness: k, damping: d,
-      }));
-      for (let g = 1; g < gap.length; g++) {
-        links.push(Constraint.create({ bodyA: gap[g - 1], bodyB: gap[g], length: gapStep, stiffness: k, damping: d }));
-      }
-      links.push(Constraint.create({
-        bodyA: gap[gap.length - 1], bodyB: letters[i], pointB: { x: 0, y: -m.lh / 2 },
-        length: gapStep / 2, stiffness: k, damping: d,
+        bodyA: segs[i - 1], bodyB: segs[i], length: dist(pts[i], pts[i + 1]),
+        stiffness: c.stiffness, damping: c.damping,
       }));
     }
-
-    Composite.add(world, [...segs, ...gaps.flat(), ...letters, anchor, ...links]);
-
-    return {
-      menu, index, ax, segs, gaps, letters, anchor, links, wrap, els,
-      lh: m.lh, lw: m.lw, tail: m.segLen,
-      restY: nominalY, progress: 0, snapped: false,
-    };
+    Composite.add(world, [...segs, ...anchors, ...links]);
+    return { a, b, segs, anchors, links };
   }
 
-  function removeRope(rope) {
-    Composite.remove(world, [...rope.segs, ...rope.gaps.flat(), ...rope.letters, ...rope.links]);
-    if (!rope.snapped) Composite.remove(world, rope.anchor);
-    rope.wrap.remove();
-  }
-
-  function buildRopes() {
-    for (const r of ropes) removeRope(r);
-    ropes = CONFIG.menus.map((menu, i) => createRope(menu, i));
-  }
-
-  function ropeBodies() {
-    return ropes.flatMap((r) => [...r.segs, ...r.gaps.flat(), ...r.letters]);
+  function buildLine() {
+    if (line) Composite.remove(world, [...line.segs, ...line.anchors, ...line.links]);
+    line = createLine();
   }
 
   // ------------------------------------------------------------------
@@ -765,22 +609,14 @@
   // ------------------------------------------------------------------
   function createBall() {
     ballR = glassRadius();
-    // 줄 사이 가장 넓은 틈 위에서 떨어뜨린다
-    const xs = [leverZone(), ...ropes.map((r) => r.ax), W];
-    let bestX = W / 2, bestGap = -1;
-    for (let i = 0; i < xs.length - 1; i++) {
-      const g = xs[i + 1] - xs[i];
-      const mid = (xs[i] + xs[i + 1]) / 2;
-      // 비슷한 틈이면 화면 가운데에 가까운 쪽
-      if (g > bestGap * 1.05 || (g > bestGap * 0.95 && Math.abs(mid - W / 2) < Math.abs(bestX - W / 2))) { bestGap = Math.max(g, bestGap); bestX = mid; }
-    }
-    bestX = Math.min(W - ballR - 4, Math.max(ballR + 4, bestX));
-    ball = Bodies.circle(bestX, ballR + 4, ballR, {
+    // 화면 오른쪽 위에서 떨어뜨린다 → 빨랫줄에 걸쳐 처진 가운데 쪽으로 굴러감
+    const x = Math.min(W - ballR - 4, Math.max(ballR + 4, leverZone() + (W - leverZone()) * 0.7));
+    ball = Bodies.circle(x, ballR + 4, ballR, {
       density: CONFIG.glass.density,
       restitution: CONFIG.glass.restitution,
       friction: 0.2,
       frictionAir: 0.008,
-      collisionFilter: { category: CAT.BALL, mask: CAT.WALL | CAT.ROPE },
+      collisionFilter: { category: CAT.BALL, mask: CAT.WALL | CAT.LINE },
     });
     Composite.add(world, ball);
     checkGhost(true);
@@ -789,14 +625,14 @@
 
   // 구슬이 줄과 겹친 채로 생성/리사이즈되면 겹침이 풀릴 때까지 줄과의 충돌을 끈다
   function checkGhost(start) {
-    if (start) ball.plugin.ghost = Query.collides(ball, ropeBodies()).length > 0;
+    if (start) ball.plugin.ghost = Query.collides(ball, line.segs).length > 0;
     if (!ball.plugin.ghost) {
-      ball.collisionFilter.mask = CAT.WALL | CAT.ROPE;
+      ball.collisionFilter.mask = CAT.WALL | CAT.LINE;
       return;
     }
-    if (Query.collides(ball, ropeBodies()).length === 0) {
+    if (Query.collides(ball, line.segs).length === 0) {
       ball.plugin.ghost = false;
-      ball.collisionFilter.mask = CAT.WALL | CAT.ROPE;
+      ball.collisionFilter.mask = CAT.WALL | CAT.LINE;
     } else {
       ball.collisionFilter.mask = CAT.WALL;
     }
@@ -860,27 +696,15 @@
   }
 
   function hitTest(p) {
-    if (Vector.magnitude(Vector.sub(p, ball.position)) <= ballR) return { body: ball, rope: null };
-    for (const rope of ropes) {
-      if (rope.snapped) continue;
-      // 글자가 작아졌으므로 글자 중심 근처(hitPad)까지 잡히게
-      const hit = Query.point(rope.letters, p)[0] ||
-        rope.letters.find((b) => Vector.magnitude(Vector.sub(p, b.position)) <= rope.lh / 2 + BEAD.hitPad);
-      if (hit) return { body: hit, rope };
-    }
+    if (Vector.magnitude(Vector.sub(p, ball.position)) <= ballR) return { body: ball };
     return null;
   }
 
   stage.addEventListener("pointerdown", (e) => {
-    if (grab || overlay.classList.contains("open")) return;
+    if (grab || reducedMotion) return;
     const p = pointerPos(e);
     const hit = hitTest(p);
     if (!hit) return;
-
-    if (reducedMotion) {
-      if (hit.rope) openPage(hit.rope.menu, null);
-      return;
-    }
 
     const constraint = Constraint.create({
       pointA: p,
@@ -891,7 +715,7 @@
       damping: 0.1,
     });
     Composite.add(world, constraint);
-    grab = { constraint, body: hit.body, rope: hit.rope, pointerId: e.pointerId };
+    grab = { constraint, body: hit.body, pointerId: e.pointerId };
     stage.setPointerCapture(e.pointerId);
     stage.style.cursor = "grabbing";
     if (hit.body === ball) glassEl.classList.add("held");
@@ -905,100 +729,24 @@
       grab.constraint.pointA.y = p.y;
       return;
     }
-    if (e.pointerType === "mouse") stage.style.cursor = hitTest(p) ? (reducedMotion ? "pointer" : "grab") : "";
+    if (e.pointerType === "mouse" && !reducedMotion) stage.style.cursor = hitTest(p) ? "grab" : "";
   });
 
   function release(e) {
     if (!grab || e.pointerId !== grab.pointerId) return;
     Composite.remove(world, grab.constraint);
-    const rope = grab.rope;
     glassEl.classList.remove("held");
     stage.style.cursor = "";
     grab = null;
-    if (rope && rope.progress >= 1) snapRope(rope);
   }
   stage.addEventListener("pointerup", release);
   stage.addEventListener("pointercancel", release);
 
   // ------------------------------------------------------------------
-  // 당김 판정 → 줄 끊김 → placeholder 페이지
-  // ------------------------------------------------------------------
-  function updatePull(rope) {
-    const last = rope.letters[rope.letters.length - 1];
-    const held = grab && grab.rope === rope;
-    if (!held && !rope.snapped && last.speed < 0.05) {
-      // 정지 상태일 때 기본 위치를 천천히 갱신 (구슬이 얹혀 있는 경우 등)
-      rope.restY += (last.position.y - rope.restY) * 0.02;
-    }
-    const raw = held ? (last.position.y - rope.restY) / CONFIG.rope.pullThreshold : 0;
-    rope.progress = Math.max(0, raw);
-    const p = Math.min(1, Math.max(0, (rope.progress - 0.4) / 0.6));
-    rope.wrap.style.setProperty("--p", p.toFixed(3));
-    rope.wrap.classList.toggle("ready", rope.progress >= 1);
-  }
-
-  function snapRope(rope) {
-    rope.snapped = true;
-    rope.progress = 0;
-    rope.wrap.classList.remove("ready");
-    Composite.remove(world, rope.anchor);
-    for (const b of rope.segs) Body.setVelocity(b, { x: (Math.random() - 0.5) * 3, y: -2 });
-    setTimeout(() => openPage(rope.menu, rope), 650);
-  }
-
-  function openPage(menu, rope) {
-    if (!menu.href.startsWith("#")) {
-      // 줄이 끊긴 직후 화면을 배경색으로 덮으며 하위 페이지로 (하위 페이지는 페이드인으로 시작)
-      if (reducedMotion) { window.location.href = menu.href; return; }
-      pageFade.classList.add("on");
-      setTimeout(() => (window.location.href = menu.href), 350);
-      return;
-    }
-    openRope = rope;
-    document.getElementById("ov-title").textContent = menu.label;
-    overlay.classList.add("open");
-    document.getElementById("ov-close").focus();
-  }
-
-  function closePage() {
-    overlay.classList.remove("open");
-    if (openRope) {
-      const i = ropes.indexOf(openRope);
-      removeRope(openRope);
-      ropes[i] = createRope(openRope.menu, openRope.index);
-      if (reducedMotion) renderOnce();
-      else checkGhost(true);
-      openRope = null;
-    }
-  }
-  document.getElementById("ov-close").addEventListener("click", closePage);
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && overlay.classList.contains("open")) closePage();
-  });
-
-  // 키보드/스크린리더용 링크
-  const srList = document.getElementById("sr-list");
-  for (const menu of CONFIG.menus) {
-    const li = document.createElement("li");
-    const a = document.createElement("a");
-    a.href = menu.href;
-    a.textContent = menu.label;
-    a.addEventListener("click", (e) => {
-      if (menu.href.startsWith("#")) {
-        e.preventDefault();
-        openPage(menu, null);
-      }
-    });
-    li.appendChild(a);
-    srList.appendChild(li);
-  }
-
-  // ------------------------------------------------------------------
   // 렌더링
   // ------------------------------------------------------------------
   let dpr = 1;
-  let ropeColor = "";
-  let accentColor = "";
+  let lineColor = "";
   const glowCanvas = document.getElementById("plus-glow");
   const gctx = glowCanvas.getContext("2d");
   const glow = { x: null, y: null, r: 0, box: null };
@@ -1042,8 +790,7 @@
     canvas.width = Math.round(W * dpr);
     canvas.height = Math.round(H * dpr);
     const cs = getComputedStyle(document.documentElement);
-    ropeColor = cssColor("--rope");
-    accentColor = cssColor("--accent");
+    lineColor = cssColor("--clothesline");
     glowCanvas.width = canvas.width;
     glowCanvas.height = canvas.height;
     grid = parseFloat(cs.getPropertyValue("--grid")) || 24;
@@ -1059,61 +806,28 @@
     sizeField();
   }
 
-  function drawRopes() {
+  // 빨랫줄: 고정점 → 마디들 → 고정점을 부드러운 곡선으로 + 양 끝 작은 고정점
+  function drawLine() {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, W, H);
-    ctx.lineWidth = 1.6;
+    const pts = [line.a, ...line.segs.map((s) => s.position), line.b];
+    ctx.strokeStyle = lineColor;
+    ctx.lineWidth = CONFIG.line.width;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-    for (const rope of ropes) {
-      const pts = [];
-      if (!rope.snapped) pts.push({ x: rope.ax, y: 0 });
-      for (const s of rope.segs) pts.push(s.position);
-      // 실이 글자(구슬)를 위→아래로 꿰뚫고 다음 글자로 이어진다
-      const at = (b, dy) => Vector.add(b.position, Vector.rotate({ x: 0, y: dy }, b.angle));
-      rope.letters.forEach((b, i) => {
-        pts.push(at(b, -rope.lh / 2), at(b, rope.lh / 2));
-        if (i < rope.gaps.length) for (const s of rope.gaps[i]) pts.push(s.position);
-      });
-      const last = rope.letters[rope.letters.length - 1];
-      const knot = at(last, rope.lh / 2 + rope.tail);
-      pts.push(knot);
-
-      ctx.strokeStyle = rope.progress >= 0.6 ? accentColor : ropeColor;
-      ctx.beginPath();
-      ctx.moveTo(pts[0].x, pts[0].y);
-      for (let i = 1; i < pts.length - 1; i++) {
-        const mx = (pts[i].x + pts[i + 1].x) / 2;
-        const my = (pts[i].y + pts[i + 1].y) / 2;
-        ctx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
-      }
-      const end = pts[pts.length - 1];
-      ctx.lineTo(end.x, end.y);
-      ctx.stroke();
-
-      // 실 끝 매듭
-      ctx.fillStyle = ctx.strokeStyle;
-      ctx.beginPath();
-      ctx.arc(knot.x, knot.y, 2.2, 0, Math.PI * 2);
-      ctx.fill();
-
-      if (!rope.snapped) {
-        ctx.fillStyle = ropeColor;
-        ctx.beginPath();
-        ctx.arc(rope.ax, 0, 3, 0, Math.PI * 2);
-        ctx.fill();
-      }
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length - 1; i++) {
+      const mx = (pts[i].x + pts[i + 1].x) / 2;
+      const my = (pts[i].y + pts[i + 1].y) / 2;
+      ctx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
     }
-  }
-
-  function drawLetters() {
-    for (const rope of ropes) {
-      for (let i = 0; i < rope.letters.length; i++) {
-        const b = rope.letters[i];
-        rope.els[i].style.transform =
-          `translate(${b.position.x - rope.lw / 2}px, ${b.position.y - rope.lh / 2}px) rotate(${b.angle}rad)`;
-      }
-    }
+    ctx.lineTo(line.b.x, line.b.y);
+    ctx.stroke();
+    ctx.fillStyle = lineColor;
+    ctx.beginPath();
+    ctx.arc(line.a.x, line.a.y, 2.5, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   // 속도에 따른 말랑한 변형 + 하이라이트 이동
@@ -1182,8 +896,7 @@
   }
 
   function renderOnce() {
-    drawRopes();
-    drawLetters();
+    drawLine();
     drawGlass();
     drawGlow();
   }
@@ -1354,7 +1067,6 @@
     if (n === CONFIG.substeps * 3) acc = 0;
 
     if (ball.plugin.ghost) checkGhost(false);
-    for (const rope of ropes) updatePull(rope);
     renderOnce();
     stitchTrack(now);
     stitchDraw(now);
@@ -1389,7 +1101,7 @@
       sizeCanvas();
       stitchResize();
       buildWalls();
-      buildRopes();
+      buildLine();
       resizeBall();
       if (reducedMotion) placeStaticBall();
       renderOnce();
@@ -1414,21 +1126,10 @@
     }
   }
 
-  // 줄이 다시 매달리는 연출: 모든 줄을 같은 각도로 들어 올린 채 시작해 진자처럼 흔들리며 내려오게.
-  // 마디 간 거리는 그대로라 제약이 깨지지 않고, 같은 방향이라 줄끼리 겹치지 않는다.
-  function swingRopes() {
-    const spacing = metrics().spacing;
-    for (const rope of ropes) {
-      const last = rope.letters[rope.letters.length - 1];
-      const len = last.position.y;
-      const a = Math.min(0.35, Math.asin(Math.min(1, (spacing * 0.8) / len)));
-      const cos = Math.cos(a), sin = Math.sin(a);
-      for (const b of [...rope.segs, ...rope.gaps.flat(), ...rope.letters]) {
-        const dx = b.position.x - rope.ax, dy = b.position.y;
-        Body.setPosition(b, { x: rope.ax + dx * cos - dy * sin, y: dx * sin + dy * cos });
-        Body.setAngle(b, a);
-      }
-    }
+  // 돌아왔을 때 빨랫줄이 한 번 출렁이는 연출 (가운데가 가장 크게 위로 튀었다가 내려옴, 시작을 늦추지 않음)
+  function swingLine() {
+    const n = line.segs.length;
+    line.segs.forEach((s, i) => Body.setVelocity(s, { x: 0, y: -7 * Math.sin((Math.PI * (i + 1)) / (n + 1)) }));
   }
 
   function init() {
@@ -1437,12 +1138,11 @@
     sizeCanvas();
     stitchResize();
     buildWalls();
-    buildRopes();
-    if (consumeRehang() && !reducedMotion) swingRopes();
+    buildLine();
+    if (consumeRehang() && !reducedMotion) swingLine();
     createBall();
     if (reducedMotion) {
-      // 물리 없이 정적인 세로 메뉴 + 정지된 구슬
-      document.getElementById("hint").textContent = "메뉴를 눌러 열어보세요";
+      // 물리 없이 반듯한 빨랫줄 + 정지된 구슬
       placeStaticBall();
       renderOnce();
     } else {
@@ -1660,11 +1360,8 @@
   })();
   leverMQ.addEventListener("change", drawLever);
 
-  // 메뉴 글꼴(Pretendard 300) 로드 후 글자 바디 생성. CDN 실패 시에도 2.5초 뒤엔 시작.
-  const fontLoad = document.fonts
-    ? document.fonts.load('300 1em "Pretendard"').then(() => document.fonts.ready)
-    : Promise.resolve();
-  Promise.race([fontLoad, new Promise((r) => setTimeout(r, 2500))]).catch(() => {}).then(init);
+  // 글꼴을 기다리지 않고 바로 시작 (빨랫줄·구슬은 글자 크기와 무관)
+  init();
   </script>
 </body>
 </html>

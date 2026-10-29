@@ -34,7 +34,6 @@
   --stitch: var(--text);                                              /* 자수 방명록 실 · X 스티치 무늬 */
   --lever: var(--text);
   --clothesline: color-mix(in srgb, var(--text) 50%, transparent);   /* 빨랫줄 */
-  --rope: var(--clothesline);
   --pin: var(--text);                                                 /* 집게 */
   --cloth-shadow: rgba(0, 0, 0, 0.22);                                /* 천 그림자 */
 }
