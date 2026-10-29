@@ -33,7 +33,7 @@
   --overlay-bg: color-mix(in srgb, var(--bg) 80%, transparent);
   --stitch: var(--text);                                              /* 자수 방명록 실 · X 스티치 무늬 */
   --lever: var(--text);
-  --clothesline: color-mix(in srgb, var(--text) 50%, transparent);   /* 빨랫줄 */
+  --rope: color-mix(in srgb, var(--text) 50%, transparent);   /* 작품을 매단 줄 */
   --pin: var(--text);                                                 /* 집게 */
   --cloth-shadow: rgba(0, 0, 0, 0.22);                                /* 천 그림자 */
 }
@@ -71,7 +71,7 @@
   --fill-a: 4%;
   --grid-a: 13%;
   --plus-bright: color-mix(in srgb, var(--text) 80%, transparent);
-  --clothesline: color-mix(in srgb, var(--text) 45%, transparent);
+  --rope: color-mix(in srgb, var(--text) 45%, transparent);
   --cloth-shadow: rgba(0, 0, 0, 0.14);
 }
 :root[data-theme="linen"]   { --bg: #f2efe8; --bg-dark: #dcd6ca; }
@@ -88,6 +88,6 @@
   --glass-border-held: rgba(236, 232, 223, 0.55);
   --glass-shadow: rgba(0, 0, 0, 0.5);
   --grid-a: 10%;
-  --clothesline: color-mix(in srgb, var(--text) 40%, transparent);
+  --rope: color-mix(in srgb, var(--text) 40%, transparent);
   --cloth-shadow: rgba(0, 0, 0, 0.45);
 }

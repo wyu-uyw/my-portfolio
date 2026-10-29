@@ -148,8 +148,8 @@
     -webkit-user-select: none;
     -webkit-touch-callout: none;
   }
-  /* 가로 빨랫줄 */
-  #line {
+  /* 작품을 매단 줄 */
+  #ropes {
     position: absolute;
     inset: 0;
     width: 100%;
@@ -283,7 +283,7 @@
   #world.flip #sitemap { z-index: 3; }               /* 절반 넘게 돌면 사이트맵이 위로 */
   /* 두 면이 + 격자를 함께 쓰느라 투명하므로, 돌아가는 동안 메인 내용은 후반에 사라지고 사이트맵 내용은 전반에 나타난다.
      (#stage 전체가 아니라 요소마다 투명도를 줘서 유리 구슬의 backdrop-filter가 깨지지 않게) */
-  #bg, .corner.bl, #line, #glass { opacity: var(--main-a, 1); }
+  #bg, .corner.bl, #ropes, #glass { opacity: var(--main-a, 1); }
   .sm-inner { opacity: var(--map-a, 0); }
   .sm-inner { position: relative; max-width: 1040px; }
   .sm-kicker { margin: 0 0 28px; font-size: 12px; font-weight: 500; letter-spacing: 0.24em; color: var(--accent); }
@@ -379,7 +379,7 @@
   </footer>
 
   <div id="stage" aria-hidden="true">
-    <canvas id="line"></canvas>
+    <canvas id="ropes"></canvas>
     <div id="glass"></div>
   </div>
 
@@ -455,17 +455,22 @@
   <script src="assets/data.js"></script>
   <script>
   // ===================================================================
-  // 설정 — 메인은 "작업실에 널린 원단": 가로 빨랫줄 1개 + (다음 단계) 작품 천.
+  // 설정 — 메인은 "작업실에 널린 원단": 작품 1점 = 천장에서 내려온 줄 2개가 천의 윗모서리 양쪽을 잡는다.
   // 길 찾기는 왼쪽 사이트맵 레버가 맡는다.
   // ===================================================================
   const CONFIG = {
-    line: {
-      height: 0.18,          // 빨랫줄 높이 (화면 높이 비율)
-      sag: 0.035,            // 가운데 처짐 (줄 길이 대비)
-      segmentLength: 16,     // 마디 간격(px) — 마디 반지름 = 간격의 절반 → 틈 없음 (구슬이 빠지지 않게)
+    hang: {
+      count: [3, 4, 5],      // 걸리는 작품 수: 모바일(<640) / 태블릿(<1024) / 데스크톱
+      clothWidth: 0.62,      // 칸 폭 대비 천 너비
+      maxHeight: 0.45,       // 천 최대 높이 (화면 높이 비율)
+      ratio: 1.25,           // 천 세로/가로 (작품 이미지가 붙기 전 기본값)
+      top: [0.13, 0.21],     // 천 윗변 높이 범위 (화면 높이 비율) — 칸마다 조금씩 달라 리듬이 생김
+    },
+    rope: {
+      segmentLength: 14,     // 마디 간격(px), 화면 높이에 따라 비례 조정. 마디 반지름 = 간격의 절반 → 틈 없음
       stiffness: 1,          // 마디 연결 강성
       damping: 0.05,         // 흔들림 감쇠
-      anchorStiffness: 0.9,  // 양 끝 벽 고정 강성
+      anchorStiffness: 0.03, // 천장 고정점 스프링 강성 (낮을수록 아래로 잘 늘어남 → 당기기)
       width: 1.25,           // 그리는 두께(px)
     },
     glass: {
@@ -495,7 +500,7 @@
   applyMainSettings(DB.cachedSettings());
   DB.settings().then(applyMainSettings);
 
-  const CAT = { WALL: 0x1, LINE: 0x2, BALL: 0x4 };
+  const CAT = { WALL: 0x1, ROPE: 0x2, BALL: 0x4 };
   // 구슬 주변 + 패턴: 밝기 범위(구슬 반지름 배수), 따라오는 lerp, 중심에서의 최대 확대 배율
   const GLOW = { range: 2.5, follow: 0.15, maxScale: 2.2 };
   const PLUS_SIZE = 7;       // 기본 + 크기(px)
@@ -504,7 +509,7 @@
     navigator.userAgentData.brands.some((b) => /Chromium/i.test(b.brand)));
 
   const stage = document.getElementById("stage");
-  const canvas = document.getElementById("line");
+  const canvas = document.getElementById("ropes");
   const ctx = canvas.getContext("2d");
   const glassEl = document.getElementById("glass");
   const pageFade = document.getElementById("page-fade");
@@ -533,7 +538,7 @@
   let W = window.innerWidth;
   let H = window.innerHeight;
   let walls = [];
-  let line = null;          // { a, b, segs, anchors, links }
+  let hangs = [];           // 작품 걸이: { cx, w, h, top, ropes: [왼쪽, 오른쪽], spreader }
   let ball = null;
   let ballR = 0;
   let grab = null;          // { constraint, body, pointerId }
@@ -562,46 +567,74 @@
   }
 
   // ------------------------------------------------------------------
-  // 가로 빨랫줄 — 왼쪽 레버 영역 끝에서 오른쪽 벽까지, 양 끝 고정 · 가운데가 처진 사슬.
-  // 구슬과 충돌하고 구슬이 줄 위에 걸칠 수 있다. (다음 단계: 천을 집게로 이 마디들에 고정)
+  // 작품 걸이 — 작품 1점마다 천장에서 수직으로 내려온 줄 2개. 두 줄 끝이 천의 윗모서리 양쪽을 잡는다.
+  // 줄은 예전 메뉴 줄과 같은 Matter.js 사슬 (천장 고정점이 약한 스프링이라 아래로 당기면 늘어남).
+  // 지금은 천 대신 두 줄 끝을 천 너비만큼 벌려 두는 임시 막대 + 점선 자리 표시. (다음 단계: 천이 이 자리를 대신함)
   // ------------------------------------------------------------------
-  function createLine() {
-    const c = CONFIG.line;
-    const a = { x: leverZone(), y: Math.round(H * c.height) };
-    const b = { x: W, y: a.y };
-    const span = b.x - a.x;
-    const sag = span * c.sag;
-    const n = Math.max(8, Math.round(span / c.segmentLength));
-    // 처음부터 처진 모양(포물선)으로 놓고, 마디 사이 길이를 그대로 고정 → 줄 전체 길이가 일정해 거의 출렁이지 않고 시작
-    const pts = [];
-    for (let i = 0; i <= n; i++) {
-      const t = i / n;
-      pts.push({ x: a.x + span * t, y: a.y + 4 * sag * t * (1 - t) });
-    }
-    const segR = span / n / 2;               // 마디 반지름 = 간격의 절반 → 틈 없음
-    const filter = { group: Body.nextGroup(true), category: CAT.LINE, mask: CAT.WALL | CAT.BALL };
-    const bodyOpts = { collisionFilter: filter, frictionAir: 0.02, density: 0.02, friction: 0.3 };
-    const segs = pts.slice(1, -1).map((p) => Bodies.circle(p.x, p.y, segR, bodyOpts));
-    const dist = (p, q) => Math.hypot(p.x - q.x, p.y - q.y);
+  // 칸마다 천 윗변 높이를 조금씩 다르게 (고정된 순서라 새로고침해도 같은 리듬)
+  const TOP_RHYTHM = [0.35, 0.8, 0.15, 0.65, 0.5];
 
-    const anchors = [
-      Constraint.create({ pointA: a, bodyB: segs[0], length: dist(a, pts[1]), stiffness: c.anchorStiffness, damping: 0.08 }),
-      Constraint.create({ pointA: b, bodyB: segs[segs.length - 1], length: dist(b, pts[n - 1]), stiffness: c.anchorStiffness, damping: 0.08 }),
-    ];
-    const links = [];
-    for (let i = 1; i < segs.length; i++) {
-      links.push(Constraint.create({
-        bodyA: segs[i - 1], bodyB: segs[i], length: dist(pts[i], pts[i + 1]),
-        stiffness: c.stiffness, damping: c.damping,
-      }));
-    }
-    Composite.add(world, [...segs, ...anchors, ...links]);
-    return { a, b, segs, anchors, links };
+  function hangCount() {
+    const [m, t, d] = CONFIG.hang.count;
+    return W < 640 ? m : W < 1024 ? t : d;
   }
 
-  function buildLine() {
-    if (line) Composite.remove(world, [...line.segs, ...line.anchors, ...line.links]);
-    line = createLine();
+  function hangLayout() {
+    const c = CONFIG.hang;
+    const n = hangCount();
+    const left = leverZone();                 // 왼쪽 레버 영역은 비워 둔다
+    const slot = (W - left) / n;
+    const w = Math.min(slot * c.clothWidth, (H * c.maxHeight) / c.ratio);
+    const segLen = CONFIG.rope.segmentLength * Math.min(1.15, Math.max(0.6, H / 900));
+    return Array.from({ length: n }, (_, i) => ({
+      cx: left + slot * (i + 0.5),
+      w,
+      h: w * c.ratio,
+      top: H * (c.top[0] + (c.top[1] - c.top[0]) * TOP_RHYTHM[i % TOP_RHYTHM.length]),
+      segLen,
+    }));
+  }
+
+  // 천장 (x, 0)에서 y=bottom까지 내려오는 줄 하나
+  function createRope(x, bottom, segLen, filter) {
+    const c = CONFIG.rope;
+    const bodyOpts = { collisionFilter: filter, frictionAir: 0.02, density: 0.02, friction: 0.3 };
+    const n = Math.max(3, Math.round(bottom / segLen));
+    const step = bottom / n;
+    const segs = [];
+    for (let i = 1; i <= n; i++) segs.push(Bodies.circle(x, step * i, step / 2, bodyOpts));   // 반지름 = 간격의 절반 → 틈 없음
+    const anchor = Constraint.create({ pointA: { x, y: 0 }, bodyB: segs[0], length: step, stiffness: c.anchorStiffness, damping: 0.08 });
+    const links = [];
+    for (let i = 1; i < segs.length; i++) {
+      links.push(Constraint.create({ bodyA: segs[i - 1], bodyB: segs[i], length: step, stiffness: c.stiffness, damping: c.damping }));
+    }
+    return { ax: x, segs, anchor, links, end: segs[segs.length - 1] };
+  }
+
+  function createHang(slot, index) {
+    // 같은 작품의 두 줄끼리는 충돌하지 않음 (다른 작품 줄 · 구슬과는 부딪힘)
+    const filter = { group: Body.nextGroup(true), category: CAT.ROPE, mask: CAT.WALL | CAT.ROPE | CAT.BALL };
+    const ropes = [
+      createRope(slot.cx - slot.w / 2, slot.top, slot.segLen, filter),
+      createRope(slot.cx + slot.w / 2, slot.top, slot.segLen, filter),
+    ];
+    // 임시: 두 줄 끝을 천 너비만큼 벌려 둠 (다음 단계에서 천이 대신함)
+    const spreader = Constraint.create({ bodyA: ropes[0].end, bodyB: ropes[1].end, length: slot.w, stiffness: 1, damping: 0.05 });
+    Composite.add(world, [...ropes.flatMap((r) => [...r.segs, r.anchor, ...r.links]), spreader]);
+    return { index, ...slot, ropes, spreader };
+  }
+
+  function removeHang(hang) {
+    Composite.remove(world, [...hang.ropes.flatMap((r) => [...r.segs, r.anchor, ...r.links]), hang.spreader]);
+  }
+
+  function buildHangs() {
+    for (const h of hangs) removeHang(h);
+    hangs = hangLayout().map(createHang);
+  }
+
+  function ropeBodies() {
+    return hangs.flatMap((h) => h.ropes.flatMap((r) => r.segs));
   }
 
   // ------------------------------------------------------------------
@@ -609,14 +642,14 @@
   // ------------------------------------------------------------------
   function createBall() {
     ballR = glassRadius();
-    // 화면 오른쪽 위에서 떨어뜨린다 → 빨랫줄에 걸쳐 처진 가운데 쪽으로 굴러감
-    const x = Math.min(W - ballR - 4, Math.max(ballR + 4, leverZone() + (W - leverZone()) * 0.7));
-    ball = Bodies.circle(x, ballR + 4, ballR, {
+    // 걸린 천들 아래 빈 바닥 쪽(오른쪽)에서 시작 → 처음부터 줄 사이에 끼지 않는다
+    const below = Math.max(...hangs.map((h) => h.top + h.h)) + ballR + 12;
+    ball = Bodies.circle(W - ballR - Math.min(80, W * 0.08), Math.min(H - ballR - 2, below), ballR, {
       density: CONFIG.glass.density,
       restitution: CONFIG.glass.restitution,
       friction: 0.2,
       frictionAir: 0.008,
-      collisionFilter: { category: CAT.BALL, mask: CAT.WALL | CAT.LINE },
+      collisionFilter: { category: CAT.BALL, mask: CAT.WALL | CAT.ROPE },
     });
     Composite.add(world, ball);
     checkGhost(true);
@@ -625,14 +658,14 @@
 
   // 구슬이 줄과 겹친 채로 생성/리사이즈되면 겹침이 풀릴 때까지 줄과의 충돌을 끈다
   function checkGhost(start) {
-    if (start) ball.plugin.ghost = Query.collides(ball, line.segs).length > 0;
+    if (start) ball.plugin.ghost = Query.collides(ball, ropeBodies()).length > 0;
     if (!ball.plugin.ghost) {
-      ball.collisionFilter.mask = CAT.WALL | CAT.LINE;
+      ball.collisionFilter.mask = CAT.WALL | CAT.ROPE;
       return;
     }
-    if (Query.collides(ball, line.segs).length === 0) {
+    if (Query.collides(ball, ropeBodies()).length === 0) {
       ball.plugin.ghost = false;
-      ball.collisionFilter.mask = CAT.WALL | CAT.LINE;
+      ball.collisionFilter.mask = CAT.WALL | CAT.ROPE;
     } else {
       ball.collisionFilter.mask = CAT.WALL;
     }
@@ -746,7 +779,9 @@
   // 렌더링
   // ------------------------------------------------------------------
   let dpr = 1;
-  let lineColor = "";
+  let ropeColor = "";
+  let pinColor = "";
+  let placeholderColor = "";
   const glowCanvas = document.getElementById("plus-glow");
   const gctx = glowCanvas.getContext("2d");
   const glow = { x: null, y: null, r: 0, box: null };
@@ -790,7 +825,9 @@
     canvas.width = Math.round(W * dpr);
     canvas.height = Math.round(H * dpr);
     const cs = getComputedStyle(document.documentElement);
-    lineColor = cssColor("--clothesline");
+    ropeColor = cssColor("--rope");
+    pinColor = cssColor("--pin");
+    placeholderColor = cssColor("--line-strong");
     glowCanvas.width = canvas.width;
     glowCanvas.height = canvas.height;
     grid = parseFloat(cs.getPropertyValue("--grid")) || 24;
@@ -806,28 +843,52 @@
     sizeField();
   }
 
-  // 빨랫줄: 고정점 → 마디들 → 고정점을 부드러운 곡선으로 + 양 끝 작은 고정점
-  function drawLine() {
+  // 줄: 천장 고정점 → 마디들을 부드러운 곡선으로, 줄 끝에 천을 잡는 작은 매듭.
+  // 두 줄 끝 사이에는 천이 걸릴 자리를 점선으로 (다음 단계에서 천으로 바뀜)
+  function drawHangs() {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, W, H);
-    const pts = [line.a, ...line.segs.map((s) => s.position), line.b];
-    ctx.strokeStyle = lineColor;
-    ctx.lineWidth = CONFIG.line.width;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-    ctx.beginPath();
-    ctx.moveTo(pts[0].x, pts[0].y);
-    for (let i = 1; i < pts.length - 1; i++) {
-      const mx = (pts[i].x + pts[i + 1].x) / 2;
-      const my = (pts[i].y + pts[i + 1].y) / 2;
-      ctx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
+    for (const hang of hangs) {
+      ctx.strokeStyle = ropeColor;
+      ctx.lineWidth = CONFIG.rope.width;
+      ctx.setLineDash([]);
+      for (const rope of hang.ropes) {
+        const pts = [{ x: rope.ax, y: 0 }, ...rope.segs.map((s) => s.position)];
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length - 1; i++) {
+          const mx = (pts[i].x + pts[i + 1].x) / 2;
+          const my = (pts[i].y + pts[i + 1].y) / 2;
+          ctx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
+        }
+        const end = pts[pts.length - 1];
+        ctx.lineTo(end.x, end.y);
+        ctx.stroke();
+      }
+      // 천 자리: 두 줄 끝을 윗변으로, 그 수직 아래로 천 높이만큼
+      const a = hang.ropes[0].end.position, b = hang.ropes[1].end.position;
+      const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+      const nx = -(b.y - a.y) / len * hang.h, ny = (b.x - a.x) / len * hang.h;
+      ctx.strokeStyle = placeholderColor;
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 5]);
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.lineTo(b.x + nx, b.y + ny);
+      ctx.lineTo(a.x + nx, a.y + ny);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = pinColor;
+      for (const p of [a, b]) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
-    ctx.lineTo(line.b.x, line.b.y);
-    ctx.stroke();
-    ctx.fillStyle = lineColor;
-    ctx.beginPath();
-    ctx.arc(line.a.x, line.a.y, 2.5, 0, Math.PI * 2);
-    ctx.fill();
   }
 
   // 속도에 따른 말랑한 변형 + 하이라이트 이동
@@ -896,7 +957,7 @@
   }
 
   function renderOnce() {
-    drawLine();
+    drawHangs();
     drawGlass();
     drawGlow();
   }
@@ -1101,7 +1162,7 @@
       sizeCanvas();
       stitchResize();
       buildWalls();
-      buildLine();
+      buildHangs();
       resizeBall();
       if (reducedMotion) placeStaticBall();
       renderOnce();
@@ -1126,10 +1187,17 @@
     }
   }
 
-  // 돌아왔을 때 빨랫줄이 한 번 출렁이는 연출 (가운데가 가장 크게 위로 튀었다가 내려옴, 시작을 늦추지 않음)
-  function swingLine() {
-    const n = line.segs.length;
-    line.segs.forEach((s, i) => Body.setVelocity(s, { x: 0, y: -7 * Math.sin((Math.PI * (i + 1)) / (n + 1)) }));
+  // 다시 매달리는 연출: 모든 줄을 같은 각도로 들어 올린 채 시작해 진자처럼 흔들리며 내려오게.
+  // 각 줄을 제 고정점 기준으로 같은 각도만큼 돌리므로 두 줄 끝 간격(천 너비)이 그대로이고, 같은 방향이라 서로 겹치지 않는다.
+  function swingHangs() {
+    const a = 0.3;
+    const cos = Math.cos(a), sin = Math.sin(a);
+    for (const rope of hangs.flatMap((h) => h.ropes)) {
+      for (const b of rope.segs) {
+        const dx = b.position.x - rope.ax, dy = b.position.y;
+        Body.setPosition(b, { x: rope.ax + dx * cos - dy * sin, y: dx * sin + dy * cos });
+      }
+    }
   }
 
   function init() {
@@ -1138,11 +1206,11 @@
     sizeCanvas();
     stitchResize();
     buildWalls();
-    buildLine();
-    if (consumeRehang() && !reducedMotion) swingLine();
+    buildHangs();
+    if (consumeRehang() && !reducedMotion) swingHangs();
     createBall();
     if (reducedMotion) {
-      // 물리 없이 반듯한 빨랫줄 + 정지된 구슬
+      // 물리 없이 반듯하게 걸린 줄 + 정지된 구슬
       placeStaticBall();
       renderOnce();
     } else {
@@ -1360,7 +1428,7 @@
   })();
   leverMQ.addEventListener("change", drawLever);
 
-  // 글꼴을 기다리지 않고 바로 시작 (빨랫줄·구슬은 글자 크기와 무관)
+  // 글꼴을 기다리지 않고 바로 시작 (줄·구슬은 글자 크기와 무관)
   init();
   </script>
 </body>
