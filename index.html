@@ -327,6 +327,42 @@
   }
   #page-fade.on { opacity: 1; }
 
+  /* ---------- 천 펼쳐 보기 ---------- */
+  /* 천 뒤를 덮는 막: #stage 안에서 줄 · 구슬 위, 천 캔버스만 그 위로 올라온다 (다른 천은 셰이더에서 흐려짐) */
+  #unfold-dim {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: var(--overlay-bg);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.45s ease;
+  }
+  #stage.dim #unfold-dim { opacity: 1; }
+  #stage.unfolding #cloth { z-index: 2; }
+  /* 화면 전체를 덮는 투명한 층: 바깥을 누르면 닫힘 (펼쳐 보는 동안 다른 조작 잠금) */
+  #unfold { position: fixed; inset: 0; z-index: 9; display: none; }
+  #unfold.open { display: block; }
+  .uf-panel {
+    position: absolute;
+    left: 50%;
+    width: min(calc(100vw - 32px), 520px);
+    transform: translateX(-50%);
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  #unfold.show .uf-panel { opacity: 1; }
+  .uf-meta { margin: 0 0 6px; font-size: 12px; font-weight: 500; letter-spacing: 0.16em; color: var(--accent); }
+  .uf-title { margin: 0 0 18px; font-weight: 300; font-size: clamp(24px, 4vw, 40px); line-height: 1.15; color: var(--text); }
+  .uf-actions { display: flex; justify-content: center; gap: 8px; }
+  .uf-actions .draft-btn { padding: 9px 18px; font-size: 14px; }
+  .uf-go { background: var(--text) !important; color: var(--bg) !important; border-color: var(--text) !important; }
+  .uf-go:hover { background: var(--accent) !important; border-color: var(--accent) !important; color: var(--on-accent) !important; }
+
+  #hint { transition: opacity 0.4s ease; }
+  #hint.seen { opacity: 0; }
+
   /* ---------- 접근성 ---------- */
   .sr-only {
     position: absolute !important;
@@ -376,13 +412,14 @@
       <p class="p-name" id="p-name"></p>
       <p class="p-meta"><b id="p-email"></b><br><span id="p-intro"></span></p>
     </div>
-    <p id="hint" aria-hidden="true" style="margin:0">유리구슬은 잡고 던질 수 있어요 · 메뉴는 왼쪽 SITEMAP</p>
+    <p id="hint" aria-hidden="true" style="margin:0">천을 눌러 펼쳐 보고, 끝까지 당기면 작품으로 이동해요</p>
   </footer>
 
   <div id="stage" aria-hidden="true">
     <canvas id="cloth"></canvas>
     <canvas id="ropes"></canvas>
     <div id="glass"></div>
+    <div id="unfold-dim"></div>
   </div>
 
   <nav id="sitemap" aria-label="사이트맵" aria-hidden="true" inert>
@@ -445,6 +482,18 @@
   </div>
 
   <div id="page-fade" aria-hidden="true"></div>
+
+  <!-- 천 펼쳐 보기: 작품 정보 (천은 #stage 안에서 화면 가운데로 펴진다) -->
+  <div id="unfold" role="dialog" aria-modal="true" aria-labelledby="uf-title">
+    <div class="uf-panel">
+      <p class="uf-meta" id="uf-meta"></p>
+      <h2 class="uf-title" id="uf-title"></h2>
+      <div class="uf-actions">
+        <a class="draft-btn uf-go" id="uf-go" href="work.html">작품 보기 →</a>
+        <button class="draft-btn" id="uf-close" type="button">닫기</button>
+      </div>
+    </div>
+  </div>
 
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
     <filter id="lens-filter" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
@@ -529,8 +578,15 @@
       renderOnce();
     }
   });
-  // 뒤로가기(bfcache)로 돌아왔을 때 덮개 해제
-  window.addEventListener("pageshow", (e) => { if (e.persisted) pageFade.classList.remove("on"); });
+  // 뒤로가기(bfcache)로 돌아왔을 때: 덮개 해제, 떨어뜨린 천은 다시 걸고 위에서 내려오게
+  window.addEventListener("pageshow", (e) => {
+    if (!e.persisted) return;
+    pageFade.classList.remove("on");
+    if (hangs.some((h) => h.cloth && h.cloth.mode === "falling")) {
+      buildHangs();
+      dropInReturned();
+    }
+  });
 
   const engine = Engine.create({
     positionIterations: 10,
@@ -641,6 +697,14 @@
       hang.work = mainWorks[hang.index] || null;
       if (hang.cloth && hang.work && hang.work.cover_image) loadClothImage(hang.cloth, hang.work.cover_image);
     }
+    dropInReturned();
+  }
+
+  // 당겨서 작품으로 갔다가 돌아왔으면 그 천만 위에서 내려와 다시 걸린다
+  function dropInReturned() {
+    const id = consumeDropped();
+    const hang = id && !reducedMotion && hangs.find((h) => h.work && h.work.id === id);
+    if (hang) startDropIn(hang);
   }
 
   function removeHang(hang) {
@@ -677,6 +741,12 @@
     gravityFree: 0.3,      // 손 뗀 뒤 중력 배율 — 접힌 자락이 중력에 눌려 처진 채 남지 않고 복원력에 끝까지 펴지게
     wind: 260,             // 바람 세기(px/s²) — 살아 있는 느낌만, 이미지를 가리지 않게
     restoreHeld: 0.0006,   // 잡고 있는 동안의 복원력 (만지는 걸 방해하지 않게 약하게)
+    dropIn: 0.02,          // 작품에서 돌아왔을 때 위에서 내려와 다시 걸리는 빠르기
+    tapMove: 6,            // 이만큼(px) 덜 움직이고
+    tapMs: 250,            // 이 시간(ms) 안에 떼면 탭 = 펼쳐 보기
+    pullOpen: 0.3,         // 화면 높이의 이만큼 아래로 당기면 놓았을 때 작품으로 이동
+    unfoldMs: 650,         // 펼쳐 보기로 나오는 시간
+    foldMs: 550,           // 줄로 돌아가는 시간
     grabFollow: 0.35,      // 잡은 점이 포인터를 따라가는 정도 (서브스텝마다)
     jitter: 0.6,           // 처음 z 흔들림(px) — 평면에만 머물지 않고 앞뒤로 접힐 수 있게
     ballDepth: 0.5,        // 구슬 중심을 천보다 (반지름 × 이만큼) 앞에 둔다 → 닿으면 천이 구슬 뒤로 밀림
@@ -722,6 +792,7 @@
   const CLOTH_FRAG = `
     uniform sampler2D map;
     uniform vec2 lightDir;
+    uniform float fade;
     varying vec2 vUv;
     varying vec3 vNormal;
     void main() {
@@ -735,7 +806,8 @@
         col = texture2D(map, vUv, 2.5).rgb;
         col = mix(col, vec3(dot(col, vec3(0.299, 0.587, 0.114))), 0.3) * 0.7;
       }
-      gl_FragColor = vec4(col * shade, 1.0);
+      float a = 1.0 - fade;                    // 펼쳐 보는 동안 다른 천은 흐려짐 (미리 곱한 알파)
+      gl_FragColor = vec4(col * shade * a, a);
     }`;
 
   // 이미지가 없을 때 거는 X 스티치 무늬 원단 (하위 페이지 이미지 자리와 같은 무늬)
@@ -854,7 +926,9 @@
 
     const tex = stitchTexture(hang);
     const mat = new THREE.ShaderMaterial({
-      uniforms: { map: { value: tex }, lightDir: { value: new THREE.Vector2(-0.6, 0.8) } },
+      uniforms: { map: { value: tex }, lightDir: { value: new THREE.Vector2(-0.6, 0.8) }, fade: { value: 0 } },
+      transparent: true,
+      premultipliedAlpha: true,
       vertexShader: CLOTH_VERT,
       fragmentShader: CLOTH_FRAG,
       side: THREE.DoubleSide,
@@ -905,13 +979,27 @@
     return (a * 0.6 + b * 0.4) * gust;
   }
 
+  // 점 p가 두 줄 끝에 반듯하게 걸렸을 때의 자리 (윗변 = 두 줄 끝을 잇는 선, 그 수직 아래로)
+  const tmpHome = { x: 0, y: 0 };
+  function homeOf(hang, p, out) {
+    const a = hang.ropes[0].end.position, b = hang.ropes[1].end.position;
+    let ux = b.x - a.x, uy = b.y - a.y;
+    const ul = Math.hypot(ux, uy) || 1;
+    ux /= ul; uy /= ul;
+    const h = hang.cloth.home, s = h[p * 2], t = h[p * 2 + 1];
+    out.x = a.x + ux * s - uy * t;
+    out.y = a.y + uy * s + ux * t;
+    return out;
+  }
+
   // 서브스텝 1회: 적분(중력 · 바람) → 줄 끝 고정 → 제약 반복 → 복원력 → 구슬 밀어내기
+  // c.mode: 없음(평소) · "falling"(끝까지 당겨 매듭에서 빠져 떨어지는 중) · "dropIn"(돌아왔을 때 위에서 내려와 다시 걸리는 중)
   function stepCloth(hang, dtSec) {
     const c = hang.cloth;
     const { pos, prev, invM, cons, pins } = c;
     const held = grab && grab.hang === hang;
     const dt2 = dtSec * dtSec;
-    const g = CLOTH.gravity * (held ? 1 : CLOTH.gravityFree) * dt2;
+    const g = CLOTH.gravity * (held || c.mode === "falling" ? 1 : c.mode === "dropIn" ? 0 : CLOTH.gravityFree) * dt2;
     const wind = reducedMotion ? 0 : CLOTH.wind * dt2;
     const keep = 1 - CLOTH.damping;
     for (let p = 0, k = 0; p < c.n; p++, k += 3) {
@@ -930,6 +1018,8 @@
     }
     const pinTo = () => {
       for (let s = 0; s < 2; s++) {
+        // 매듭에서 빠진 모서리는 건너뜀. 떨어지는 중엔 아직 안 빠진 모서리도 그 자리에 둔다 (튕겨 올라가는 줄에 끌려가지 않게)
+        if (invM[pins[s]] || c.mode === "falling") continue;
         const e = hang.ropes[s].end.position, k = pins[s] * 3;
         pos[k] = prev[k] = e.x;
         pos[k + 1] = prev[k + 1] = e.y;
@@ -968,7 +1058,7 @@
       }
       // 묶음(tether, 손을 뗀 뒤에만): 어느 점도 두 매듭에서 반듯할 때 거리의 tether배보다 멀어지지 못한다.
       // 잡는 동안에는 천이 늘어나며 줄을 끌어당기고, 놓으면 늘어난 만큼을 속도 없이(pos · prev 함께) 거둬들여 휙 튕기지 않는다.
-      if (held) continue;
+      if (held || c.mode) continue;
       for (let p = 0, k = 0; p < c.n; p++, k += 3) {
         if (!invM[p]) continue;
         for (let s = 0; s < 2; s++) {
@@ -984,25 +1074,29 @@
       }
     }
 
-    // 복원력: 모든 점이 "두 매듭에 반듯하게 걸린 자리"(윗변 = 두 매듭을 잇는 선, 그 수직 아래로 펼쳐짐)로 다가간다.
+    // 복원력: 모든 점이 "두 매듭에 반듯하게 걸린 자리"(윗변 = 두 줄 끝을 잇는 선, 그 수직 아래로 펼쳐짐)로 다가간다.
     // pos와 prev를 함께 옮겨 속도를 만들지 않으므로, 출렁이며 오가지 않고 스르륵 펴진다. 잡는 동안은 아주 약하게.
-    {
-      const kL = pins[0] * 3, kR = pins[1] * 3;
-      const lx = pos[kL], ly = pos[kL + 1];
-      let ux = pos[kR] - lx, uy = pos[kR + 1] - ly;
-      const ul = Math.hypot(ux, uy) || 1;
-      ux /= ul; uy /= ul;
-      const vx = -uy, vy = ux;                    // 윗변에 수직, 아래쪽
-      const k = held ? CLOTH.restoreHeld : CLOTH.restore;
-      const home = c.home;
+    // 다시 걸리는 중(dropIn)에는 매듭에서 빠진 두 모서리도 함께 끌려와, 줄 끝에 닿으면 다시 고정된다.
+    if (c.mode !== "falling") {
+      const k = held ? CLOTH.restoreHeld : c.mode === "dropIn" ? CLOTH.dropIn : CLOTH.restore;
       for (let p = 0, q = 0; p < c.n; p++, q += 3) {
         if (!invM[p]) continue;
-        const a = home[p * 2], b = home[p * 2 + 1];
-        const mx = (lx + ux * a + vx * b - pos[q]) * k;
-        const my = (ly + uy * a + vy * b - pos[q + 1]) * k;
+        homeOf(hang, p, tmpHome);
+        const mx = (tmpHome.x - pos[q]) * k;
+        const my = (tmpHome.y - pos[q + 1]) * k;
         const mz = -pos[q + 2] * k;
         pos[q] += mx; pos[q + 1] += my; pos[q + 2] += mz;
         prev[q] += mx; prev[q + 1] += my; prev[q + 2] += mz;
+      }
+      if (c.mode === "dropIn") {
+        const near = pins.every((p, s) => {
+          const e = hang.ropes[s].end.position;
+          return Math.hypot(pos[p * 3] - e.x, pos[p * 3 + 1] - e.y) < 1.5;
+        });
+        if (near) {
+          for (const p of pins) invM[p] = 0;
+          c.mode = null;
+        }
       }
     }
 
@@ -1032,7 +1126,7 @@
   function weighRopes() {
     for (const hang of hangs) {
       const c = hang.cloth;
-      if (!c) continue;
+      if (!c || c.mode || c.unfold) continue;     // 매듭에서 빠졌거나 펼쳐 보는 중이면 줄에 무게가 없음
       hang.ropes.forEach((r, s) => {
         Body.applyForce(r.end, r.end.position, { x: c.tug[s * 2] * CLOTH.tug, y: CLOTH.weight + c.tug[s * 2 + 1] * CLOTH.tug });
       });
@@ -1052,9 +1146,158 @@
 
   function drawCloths() {
     if (!gl) return;
-    for (const hang of hangs) if (hang.cloth) updateClothMesh(hang.cloth);
+    for (const hang of hangs) {
+      const c = hang.cloth;
+      if (!c) continue;
+      // 펼쳐 보는 동안 다른 천은 흐려진다
+      const fadeTo = unfolded && unfolded !== hang ? 0.88 : 0;
+      const u = c.mat.uniforms.fade;
+      u.value += (fadeTo - u.value) * (reducedMotion ? 1 : 0.12);
+      updateClothMesh(c);
+    }
     gl.renderer.render(gl.scene, gl.camera);
   }
+
+  // ------------------------------------------------------------------
+  // 천 인터랙션 — 탭 = 펼쳐 보기 / 아래로 끝까지 당겼다 놓기 = 작품으로 이동 (드래그는 위 포인터 처리)
+  // ------------------------------------------------------------------
+  const stageEl = stage;
+  const unfoldEl = document.getElementById("unfold");
+  let unfolded = null;          // 펼쳐 보는 중인 작품 걸이
+
+  const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+  const workHref = (work) => `work-detail.html?id=${encodeURIComponent(work.id)}`;
+
+  // 펼친 천의 자리: 화면 가운데 위쪽, 천 비율 그대로 크게. 아래에 작품 정보가 온다
+  function unfoldTarget(hang) {
+    const c = hang.cloth, ratio = hang.h / hang.w;
+    const th = Math.min(H * 0.6, Math.min(W - 48, 720) * ratio);
+    const tw = th / ratio;
+    const left = (W - tw) / 2;
+    const top = Math.max(56, (H - th - 150) / 2);
+    const target = new Float32Array(c.n * 2);
+    for (let j = 0; j < c.ny; j++) {
+      for (let i = 0; i < c.nx; i++) {
+        target[(j * c.nx + i) * 2] = left + (tw * i) / (c.nx - 1);
+        target[(j * c.nx + i) * 2 + 1] = top + (th * j) / (c.ny - 1);
+      }
+    }
+    return { target, bottom: top + th };
+  }
+
+  function openUnfold(hang) {
+    const c = hang.cloth;
+    if (!c || unfolded || !hang.work) return;
+    unfolded = hang;
+    const { target, bottom } = unfoldTarget(hang);
+    c.unfold = { dir: 1, t: 0, from: c.pos.slice(), target };
+    const w = hang.work;
+    document.getElementById("uf-meta").textContent =
+      [w.year, ...(w.techniques || []).map((t) => LABELS.technique[t] || t)].filter(Boolean).join(" · ");
+    document.getElementById("uf-title").textContent = w.title;
+    document.getElementById("uf-go").href = workHref(w);
+    unfoldEl.querySelector(".uf-panel").style.top = bottom + 24 + "px";
+    stageEl.classList.add("unfolding", "dim");
+    unfoldEl.classList.add("open");
+    requestAnimationFrame(() => unfoldEl.classList.add("show"));
+    document.getElementById("uf-close").focus({ preventScroll: true });
+    seenHint();
+    if (reducedMotion) { finishUnfoldStep(hang, 1e9); renderOnce(); }
+  }
+
+  function closeUnfold() {
+    const hang = unfolded;
+    if (!hang || !hang.cloth.unfold || hang.cloth.unfold.dir < 0) return;
+    const u = hang.cloth.unfold;
+    hang.cloth.unfold = { dir: -1, t: 0, from: hang.cloth.pos.slice(), target: u.target };
+    stageEl.classList.remove("dim");
+    unfoldEl.classList.remove("show", "open");
+    if (reducedMotion) { finishUnfoldStep(hang, 1e9); renderOnce(); }
+  }
+
+  // 펼치기 · 접기 애니메이션 한 프레임: 천 점들을 출발 모양에서 목표 모양으로 (돌아갈 때 목표 = 지금 줄 끝에 반듯하게 걸린 자리)
+  function finishUnfoldStep(hang, dtMs) {
+    const c = hang.cloth, u = c.unfold;
+    u.t = Math.min(1, u.t + dtMs / (u.dir > 0 ? CLOTH.unfoldMs : CLOTH.foldMs));
+    const e = reducedMotion ? 1 : easeInOut(u.t);
+    for (let p = 0, k = 0; p < c.n; p++, k += 3) {
+      const to = u.dir > 0 ? { x: u.target[p * 2], y: u.target[p * 2 + 1] } : homeOf(hang, p, tmpHome);
+      c.pos[k] = c.prev[k] = u.from[k] + (to.x - u.from[k]) * e;
+      c.pos[k + 1] = c.prev[k + 1] = u.from[k + 1] + (to.y - u.from[k + 1]) * e;
+      c.pos[k + 2] = c.prev[k + 2] = u.from[k + 2] * (1 - e);
+    }
+    if (u.t >= 1 && u.dir < 0) {
+      c.unfold = null;
+      unfolded = null;
+      stageEl.classList.remove("unfolding");
+    }
+  }
+
+  document.getElementById("uf-close").addEventListener("click", closeUnfold);
+  unfoldEl.addEventListener("click", (e) => { if (!e.target.closest(".uf-panel")) closeUnfold(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && unfolded) closeUnfold(); });
+  document.getElementById("uf-go").addEventListener("click", (e) => {
+    if (reducedMotion || e.metaKey || e.ctrlKey || e.shiftKey) return;
+    e.preventDefault();
+    goTo(e.currentTarget.href);
+  });
+
+  function goTo(href) {
+    if (reducedMotion) { window.location.href = href; return; }
+    pageFade.classList.add("on");
+    setTimeout(() => (window.location.href = href), 350);
+  }
+
+  // 끝까지 당겼다 놓음: 매듭에서 모서리가 하나씩 톡톡 빠지며 천이 떨어지고, 이어서 작품 상세로
+  const DROPPED_KEY = "hung-from";
+  function dropCloth(hang) {
+    const c = hang.cloth;
+    c.mode = "falling";
+    hang.ready = false;
+    try { sessionStorage.setItem(DROPPED_KEY, hang.work.id); } catch (_) {}
+    // 당기던 탄력이 남아 위로 튀지 않게 속도를 비우고 살짝 아래로 출발
+    for (let k = 0; k < c.pos.length; k += 3) {
+      c.prev[k] = c.pos[k];
+      c.prev[k + 1] = c.pos[k + 1] - 3;
+      c.prev[k + 2] = c.pos[k + 2];
+    }
+    c.invM[c.pins[0]] = 1;
+    setTimeout(() => { c.invM[c.pins[1]] = 1; }, 140);
+    setTimeout(() => goTo(workHref(hang.work)), 520);
+  }
+
+  // 작품에서 돌아왔을 때: 그 천은 화면 위에서 내려와 다시 줄에 걸린다
+  function startDropIn(hang) {
+    const c = hang.cloth;
+    if (!c) return;
+    const lift = hang.top + hang.h + 60;
+    for (let p = 0, k = 0; p < c.n; p++, k += 3) {
+      homeOf(hang, p, tmpHome);
+      c.pos[k] = c.prev[k] = tmpHome.x;
+      c.pos[k + 1] = c.prev[k + 1] = tmpHome.y - lift;
+      c.pos[k + 2] = c.prev[k + 2] = 0;
+    }
+    for (const p of c.pins) c.invM[p] = 1;
+    c.mode = "dropIn";
+  }
+  function consumeDropped() {
+    try {
+      const id = sessionStorage.getItem(DROPPED_KEY);
+      sessionStorage.removeItem(DROPPED_KEY);
+      return id;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // 첫 방문 안내: 천을 처음 만지면 사라지고, 다음 방문부터는 보이지 않는다
+  const hintEl = document.getElementById("hint");
+  const HINT_KEY = "hint-cloth";
+  function seenHint() {
+    hintEl.classList.add("seen");
+    try { localStorage.setItem(HINT_KEY, "1"); } catch (_) {}
+  }
+  try { if (localStorage.getItem(HINT_KEY)) hintEl.classList.add("seen"); } catch (_) {}
 
   // ------------------------------------------------------------------
   // 리퀴드 글래스 구슬
@@ -1157,7 +1400,7 @@
   function hitCloth(p) {
     for (let h = hangs.length - 1; h >= 0; h--) {
       const c = hangs[h].cloth;
-      if (!c) continue;
+      if (!c || c.mode || c.unfold) continue;     // 떨어지는 중 · 펼쳐 보는 중인 천은 잡지 않음
       const pos = c.pos, idx = c.geom.index.array;
       for (let t = 0; t < idx.length; t += 3) {
         const a = idx[t] * 3, b = idx[t + 1] * 3, d = idx[t + 2] * 3;
@@ -1179,15 +1422,22 @@
   }
 
   stage.addEventListener("pointerdown", (e) => {
-    if (grab || reducedMotion) return;
+    if (grab || unfolded) return;
     const p = pointerPos(e);
+    if (reducedMotion) {
+      // 움직임 줄이기: 끌기 없이 천을 누르면 바로 펼쳐 보기
+      const hit = hitCloth(p);
+      if (hit) openUnfold(hit.hang);
+      return;
+    }
     const hit = hitTest(p);
     if (!hit) return;
 
     if (hit.hang) {
       // 천 만지기: 잡은 점이 포인터를 따라간다 (stepCloth에서 서브스텝마다)
       hit.hang.cloth.invM[hit.particle] = 0;
-      grab = { hang: hit.hang, particle: hit.particle, x: p.x, y: p.y, pointerId: e.pointerId };
+      grab = { hang: hit.hang, particle: hit.particle, x: p.x, y: p.y, sx: p.x, sy: p.y, t0: performance.now(), pointerId: e.pointerId };
+      seenHint();
       stage.setPointerCapture(e.pointerId);
       stage.style.cursor = "grabbing";
       e.preventDefault();
@@ -1216,6 +1466,8 @@
       if (grab.hang) {
         grab.x = p.x;
         grab.y = p.y;
+        // 아래로 충분히 당기면 매듭이 포인트 색 → "놓으면 열린다"
+        grab.hang.ready = !!grab.hang.work && p.y - grab.sy >= H * CLOTH.pullOpen;
       } else {
         grab.constraint.pointA.x = p.x;
         grab.constraint.pointA.y = p.y;
@@ -1227,8 +1479,15 @@
 
   function release(e) {
     if (!grab || e.pointerId !== grab.pointerId) return;
+    const g = grab;
     dropGrab();
     stage.style.cursor = "";
+    if (!g.hang || e.type === "pointercancel") return;
+    const hang = g.hang;
+    const tap = Math.hypot(g.x - g.sx, g.y - g.sy) < CLOTH.tapMove && performance.now() - g.t0 < CLOTH.tapMs;
+    if (tap) openUnfold(hang);
+    else if (hang.ready) dropCloth(hang);
+    hang.ready = false;
   }
 
   // 잡은 것을 놓는다 (천은 잡았던 점을 다시 자유롭게 — 움직이던 속도는 그대로 이어짐)
@@ -1250,6 +1509,7 @@
   let dpr = 1;
   let ropeColor = "";
   let pinColor = "";
+  let accentColor = "";
   let placeholderColor = "";
   const glowCanvas = document.getElementById("plus-glow");
   const gctx = glowCanvas.getContext("2d");
@@ -1296,6 +1556,7 @@
     const cs = getComputedStyle(document.documentElement);
     ropeColor = cssColor("--rope");
     pinColor = cssColor("--pin");
+    accentColor = cssColor("--accent");
     placeholderColor = cssColor("--line-strong");
     glowCanvas.width = canvas.width;
     glowCanvas.height = canvas.height;
@@ -1354,7 +1615,8 @@
         ctx.stroke();
         ctx.setLineDash([]);
       }
-      ctx.fillStyle = pinColor;
+      ctx.fillStyle = hang.ready ? accentColor : pinColor;   // 끝까지 당기면 포인트 색 = 놓으면 열림
+      if (hang.cloth && hang.cloth.mode === "falling") continue;   // 빠진 매듭은 그리지 않음
       for (const p of [a, b]) {
         ctx.beginPath();
         ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2);
@@ -1598,11 +1860,12 @@
       weighRopes();
       Engine.update(engine, STEP);
       simTime += STEP / 1000;
-      for (const hang of hangs) if (hang.cloth) stepCloth(hang, STEP / 1000);
+      for (const hang of hangs) if (hang.cloth && !hang.cloth.unfold) stepCloth(hang, STEP / 1000);
       acc -= STEP;
       n++;
     }
     if (n === CONFIG.substeps * 3) acc = 0;
+    if (unfolded && unfolded.cloth.unfold) finishUnfoldStep(unfolded, dt);
 
     if (ball.plugin.ghost) checkGhost(false);
     renderOnce();
