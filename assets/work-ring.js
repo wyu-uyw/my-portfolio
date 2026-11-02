@@ -39,6 +39,7 @@ const RING = {
   clickMove: 6,           // 이동이 이보다 작고 (px)
   clickMs: 250,           // 이보다 짧게 눌렀다 떼면 클릭 (ms)
   wheelStep: 60,          // 휠 이만큼(px)마다 한 칸 (트랙패드의 잔 움직임은 모아서)
+  morphMs: 520,           // 필터 · 탭을 바꿀 때 새 항목 수로 다시 배치되는 시간
 };
 
 const TAU = Math.PI * 2;
@@ -47,6 +48,7 @@ const wrapAngle = (a) => ((((a + Math.PI) % TAU) + TAU) % TAU) - Math.PI;
 const SVG_NS = "http://www.w3.org/2000/svg";
 // 0~1로 자른 뒤 부드러운 곡선 (smoothstep)
 const smooth = (x) => (x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x));
+const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
 // items: [{ id, title, src, ratio(가로/세로, 이미지 없을 때), ... }]
 // opts.onOpen(item) — 12시 작품을 열 때 (선택된 작품 클릭 · Enter)
@@ -67,6 +69,8 @@ function createRing(root, opts = {}) {
   let rot = 0;
   // 움직임 상태: idle(정지) · drag(잡고 돌리는 중) · coast(관성) · snap(12시로 맞추는 중)
   let mode = "idle", vel = 0, target = 0;
+  // 다시 배치(필터 · 탭 변경): 남는 항목은 이전 각도 → 새 각도, 새 항목은 나타나고 빠진 항목은 사라짐
+  let morph = null;   // { t: 0~1, leaving: [요소] }
   const g = { w: 0, h: 0, cx: 0, cy: 0, r: 0, thumb: RING.thumb, sel: RING.selScale, mobile: false };
 
   // 썸네일 상자: 긴 변 = 기본 크기, 원래 비율 유지 (회전과 무관하게 항상 똑바로 섬)
@@ -81,9 +85,11 @@ function createRing(root, opts = {}) {
     it.k = -1;   // 크기가 바뀌었으니 다음 그리기에서 확대 · 제목 위치를 다시 계산
   }
 
-  function build(list) {
-    layer.textContent = "";
+  // reuse: 이전 항목(id → 항목). 같은 id는 화면의 요소를 그대로 이어 쓴다 (다시 배치될 때 제자리에서 움직이도록)
+  function build(list, reuse = new Map()) {
     items = list.map((data) => {
+      const prev = reuse.get(data.id);
+      if (prev) { reuse.delete(data.id); return prev; }
       const el = document.createElement("div");
       el.className = "ring-item";
       const thumbEl = document.createElement("div");
@@ -120,8 +126,7 @@ function createRing(root, opts = {}) {
       (data.tags || []).forEach((t) => meta.append(Object.assign(document.createElement("span"), { className: "tag", textContent: t })));
       infoEl.append(meta);
       if (data.desc) infoEl.append(Object.assign(document.createElement("p"), { className: "ri-desc", textContent: data.desc }));
-      el.append(thumbEl, titleEl, infoEl);
-      layer.append(el);
+      el.append(thumbEl, titleEl, infoEl);   // 원에 붙이는 것은 setItems (새 항목인지 구분)
       const it = { ...data, el, thumbEl, titleEl, infoEl, z: -1, k: -1 };
       return it;
     });
@@ -195,7 +200,8 @@ function createRing(root, opts = {}) {
     const range = Math.min(step, RING.selRange);
     for (let i = 0; i < n; i++) {
       const it = items[i];
-      const a = i * step + rot;
+      let a = i * step + rot;
+      if (morph && it.fromA != null) a = it.fromA + wrapAngle(a - it.fromA) * morph.e;
       const d = Math.abs(wrapAngle(a));
       const x = g.cx + g.r * Math.sin(a);
       const y = g.cy - g.r * Math.cos(a);
@@ -224,6 +230,10 @@ function createRing(root, opts = {}) {
         it.infoEl.style.transform = `translate(-50%, ${half.toFixed(2)}px)`;
       }
     }
+    if (morph) {
+      for (const it of items) if (it.entering) it.el.style.opacity = morph.e.toFixed(3);
+      for (const el of morph.leaving) el.style.opacity = (1 - morph.e).toFixed(3);
+    }
     // 다이얼 직선 · 눈금은 원 전체의 회전 각도를 그대로 따라 돈다
     dialRot.style.transform = `rotate(${rot.toFixed(4)}rad)`;
     const label = `${String(selected() + 1).padStart(2, "0")} / ${String(n).padStart(2, "0")}`;
@@ -241,6 +251,11 @@ function createRing(root, opts = {}) {
     raf = 0;
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
+    if (morph) {
+      morph.t = Math.min(1, morph.t + (dt * 1000) / RING.morphMs);
+      morph.e = easeInOut(morph.t);
+      if (morph.t >= 1) { finishMorph(); settled(); }
+    }
     if (mode === "coast") {
       // 관성: 놓은 속도로 돌다가 마찰로 감속, 충분히 느려지면 스냅으로
       rot += vel * dt;
@@ -256,7 +271,14 @@ function createRing(root, opts = {}) {
       if (Math.abs(d) < 5e-4 && Math.abs(vel) < 5e-3) { rot = target; vel = 0; mode = "idle"; settled(); }
     }
     draw();
-    if (mode === "coast" || mode === "snap") raf = requestAnimationFrame(tick);
+    if (mode === "coast" || mode === "snap" || morph) raf = requestAnimationFrame(tick);
+  }
+  function finishMorph() {
+    if (!morph) return;
+    for (const el of morph.leaving) el.remove();
+    for (const it of items) { it.fromA = null; if (it.entering) { it.entering = false; it.el.style.opacity = ""; } }
+    morph = null;
+    draw();
   }
   // 가장 가까운 작품이 12시에 오는 각도로
   function startSnap() {
@@ -308,6 +330,7 @@ function createRing(root, opts = {}) {
   };
   root.addEventListener("pointerdown", (e) => {
     if (drag || !items.length || (e.pointerType === "mouse" && e.button !== 0)) return;
+    finishMorph();
     const p = pointerAngle(e);
     const hitEl = e.target.closest(".ring-item");
     drag = {
@@ -404,12 +427,25 @@ function createRing(root, opts = {}) {
     return ((Math.round(-rot / (TAU / n)) % n) + n) % n;
   }
 
-  function setItems(list, startIndex = 0) {
-    build(list);
+  // animate: 지금 보이는 원에서 새 항목 수의 원으로 부드럽게 다시 배치 (필터 · 탭 변경)
+  function setItems(list, startIndex = 0, { animate = false } = {}) {
+    finishMorph();
+    const prevN = items.length;
+    const canMorph = animate && !reducedMotion && prevN > 0 && list.length > 0 && !root.hidden;
+    const reuse = new Map();
+    if (canMorph) items.forEach((it, i) => { it.fromA = i * (TAU / prevN) + rot; reuse.set(it.id, it); });
+    else layer.textContent = "";
+    build(list, reuse);
+    // 남은 이전 항목 = 빠지는 항목
+    const leaving = [...reuse.values()].map((it) => it.el);
+    for (const it of items) if (canMorph && !it.el.isConnected) { it.entering = true; it.el.style.opacity = "0"; }
+    for (const it of items) if (!it.el.isConnected) layer.append(it.el);
     rot = list.length ? -startIndex * (TAU / list.length) : 0;
     mode = "idle";
     vel = 0;
     root.hidden = !list.length;
+    if (canMorph) { morph = { t: 0, e: 0, leaving }; kick(); }
+    else leaving.forEach((el) => el.remove());
     layout();
   }
 

@@ -231,7 +231,9 @@
     }));
   }
 
-  function render() {
+  // animate: 필터 · 탭을 바꿀 때 원이 새 항목 수로 부드럽게 다시 배치됨
+  // fromFilter: 필터를 바꾼 경우 선택은 첫 항목으로 (그 외엔 주소의 ?item → 대표 컬렉션 → 첫 항목)
+  function render({ animate = false, fromFilter = false } = {}) {
     document.querySelectorAll("[data-tab]").forEach((b) => {
       const on = b.dataset.tab === state.tab;
       b.setAttribute("aria-selected", String(on));
@@ -248,13 +250,15 @@
 
     emptyEl.hidden = !!list.length;
     emptyEl.textContent = state.tab === "swatch" ? "조건에 맞는 스와치가 없어요." : "조건에 맞는 컬렉션이 없어요.";
-    // 처음 선택할 항목: 주소의 ?item, 없으면 첫 항목
-    const start = Math.max(0, list.findIndex((it) => it.id === state.item));
+    // 처음 선택할 항목: 주소의 ?item, 없으면 대표 컬렉션(처음 들어왔을 때), 없으면 첫 항목
+    let start = list.findIndex((it) => it.id === state.item);
+    if (start < 0 && !fromFilter) start = list.findIndex((it) => it.featured);
+    start = Math.max(0, start);
     state.item = list[start]?.id || null;
     linksEl.innerHTML = list.map((it) => it.href
       ? `<li><a href="${esc(it.href)}">${esc(it.title)}</a></li>`
       : `<li>${zoomable({ src: it.work.cover_image, alt: it.title, ratio: "1 / 1", label: "", caption: `${it.title} · ${it.year}`, info: swatchInfo(it.work), group: "swatch" })}</li>`).join("");
-    ring.setItems(list, start);
+    ring.setItems(list, start, { animate });
     syncUrl();
   }
   // 스와치 라이트박스 정보: 기법 · 섬유 · 크기 · 메모 (기존과 같음)
@@ -262,23 +266,24 @@
     .filter(Boolean).join("  /  ");
 
   document.querySelectorAll("[data-tab]").forEach((b) => b.addEventListener("click", () => {
+    if (state.tab === b.dataset.tab) return;
     state.tab = b.dataset.tab;
     state.item = null;
-    render();
+    render({ animate: true });
   }));
   // 탭 사이를 ←/→로 이동
   document.querySelector(".tabs").addEventListener("keydown", (e) => {
     if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
     state.tab = state.tab === "swatch" ? "collections" : "swatch";
     state.item = null;
-    render();
+    render({ animate: true });
     document.getElementById("tab-" + state.tab).focus();
   });
   document.querySelectorAll("[data-tech]").forEach((b) => b.addEventListener("click", () => {
     const t = b.dataset.tech;
     state.tech.has(t) ? state.tech.delete(t) : state.tech.add(t);
     state.item = null;
-    render();
+    render({ animate: true, fromFilter: true });
   }));
 
   Promise.all([DB.collections(), DB.works("project"), DB.works("swatch")]).then(([c, p, s]) => {
