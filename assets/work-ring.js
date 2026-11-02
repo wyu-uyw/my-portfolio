@@ -16,12 +16,20 @@ const RING = {
   selScaleMobile: 2.6,
   titleSpace: 64,         // 12시 작품 위 제목이 차지하는 높이 (원 중심을 내릴 때 계산에 씀)
   edge: 12,               // 원형 영역 가장자리 여백
-  countSpace: 28,         // 다이얼 아래 01 / 12 숫자가 차지하는 높이
+  countSpace: 50,         // 다이얼 아래 01 / 12 숫자 + 첫 방문 안내 글자가 차지하는 높이
   // 가운데 다이얼 (메인 레버와 같은 흰 직선)
   dialRadius: 64,         // 눈금 점이 놓이는 반지름 (원 반지름의 dialMax까지)
   dialRadiusMobile: 40,
   dialMax: 0.32,
   dialLine: 0.78,         // 직선 길이 = 다이얼 반지름 × 이 값
+  hintGap: 22,            // 다이얼 바깥 안내 화살표까지 거리
+  // 회전 · 관성 · 스냅
+  deadZone: 18,           // 원 중심에서 이 거리 안에서는 각도가 튀므로 회전에 쓰지 않음 (px)
+  velWindow: 80,          // 놓을 때 회전 속도를 재는 최근 구간 (ms). 이보다 오래 멈췄다 놓으면 관성 없음
+  maxVel: 16,             // 관성 최대 속도 (rad/s)
+  friction: 3.2,          // 관성 감속 (클수록 빨리 멈춤, 1/s)
+  snapSpeed: 1.6,         // 이 속도(rad/s) 아래로 느려지면 가장 가까운 작품을 12시로 맞추기 시작
+  spring: 140,            // 스냅 스프링 세기 (임계 감쇠라 넘치지 않음)
 };
 
 const TAU = Math.PI * 2;
@@ -38,8 +46,14 @@ function createRing(root) {
   const dialLine = dial.querySelector(".dl-line");
   const count = root.querySelector(".ring-count");
 
+  const hintArrow = dial.querySelector(".dl-arrow");
+  const hintText = root.querySelector(".ring-hint");
+  const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
   let items = [];
   let rot = 0;
+  // 움직임 상태: idle(정지) · drag(잡고 돌리는 중) · coast(관성) · snap(12시로 맞추는 중)
+  let mode = "idle", vel = 0, target = 0;
   const g = { w: 0, h: 0, cx: 0, cy: 0, r: 0, thumb: RING.thumb, sel: RING.selScale, mobile: false };
 
   // 썸네일 상자: 긴 변 = 기본 크기, 원래 비율 유지 (회전과 무관하게 항상 똑바로 섬)
@@ -121,18 +135,25 @@ function createRing(root) {
 
     // 다이얼
     const dr = dialR(g.r);
-    const box = dr + 8;
-    dial.setAttribute("width", box * 2);
-    dial.setAttribute("height", box * 2);
-    dial.setAttribute("viewBox", `${-box} ${-box} ${box * 2} ${box * 2}`);
-    dial.style.transform = `translate(${g.cx - box}px, ${g.cy - box}px)`;
     dialLine.setAttribute("y2", -dr * RING.dialLine);
+    // 첫 방문 안내: 다이얼 바깥 오른쪽 위로 시계 방향 곡선 화살표 (메인 레버와 같은 표현)
+    const ha = dr + RING.hintGap, a0 = -0.95, a1 = -0.15;
+    const px = (a) => (ha * Math.sin(a)).toFixed(1), py = (a) => (-ha * Math.cos(a)).toFixed(1);
+    const tip = [ha * Math.sin(a1), -ha * Math.cos(a1)], tan = [Math.cos(a1), Math.sin(a1)], nrm = [Math.sin(a1), -Math.cos(a1)];
+    const wing = (s) => `${(tip[0] - tan[0] * 6 + nrm[0] * 4 * s).toFixed(1)} ${(tip[1] - tan[1] * 6 + nrm[1] * 4 * s).toFixed(1)}`;
+    hintArrow.setAttribute("d", `M${px(a0)} ${py(a0)} A${ha} ${ha} 0 0 1 ${px(a1)} ${py(a1)} M${wing(1)} L${px(a1)} ${py(a1)} L${wing(-1)}`);
+    const hbox = ha + 8;
+    dial.setAttribute("width", hbox * 2);
+    dial.setAttribute("height", hbox * 2);
+    dial.setAttribute("viewBox", `${-hbox} ${-hbox} ${hbox * 2} ${hbox * 2}`);
+    dial.style.transform = `translate(${g.cx - hbox}px, ${g.cy - hbox}px)`;
     const step = TAU / Math.max(1, items.length);
     [...dialDots.children].forEach((c, i) => {
       c.setAttribute("cx", (dr * Math.sin(i * step)).toFixed(2));
       c.setAttribute("cy", (-dr * Math.cos(i * step)).toFixed(2));
     });
-    count.style.transform = `translate(${g.cx}px, ${g.cy + box + 6}px) translateX(-50%)`;
+    count.style.transform = `translate(${g.cx}px, ${g.cy + dr + 14}px) translateX(-50%)`;
+    hintText.style.transform = `translate(${g.cx}px, ${g.cy + dr + 36}px) translateX(-50%)`;
 
     items.forEach(sizeThumb);
     draw();
@@ -153,8 +174,103 @@ function createRing(root) {
       const z = 1000 - Math.round(Math.abs(wrapAngle(a)) * 300);
       if (z !== it.z) { it.el.style.zIndex = z; it.z = z; }
     }
-    dialRot.style.transform = `rotate(${rot}rad)`;
-    count.textContent = `${String(selected() + 1).padStart(2, "0")} / ${String(n).padStart(2, "0")}`;
+    // 다이얼 직선 · 눈금은 원 전체의 회전 각도를 그대로 따라 돈다
+    dialRot.style.transform = `rotate(${rot.toFixed(4)}rad)`;
+    const label = `${String(selected() + 1).padStart(2, "0")} / ${String(n).padStart(2, "0")}`;
+    if (label !== count.textContent) count.textContent = label;
+  }
+
+  // ---------- 움직임: requestAnimationFrame 루프 하나 (멈추면 루프도 멈춤) ----------
+  let raf = 0, last = 0;
+  function kick() {
+    if (raf) return;
+    last = performance.now();
+    raf = requestAnimationFrame(tick);
+  }
+  function tick(now) {
+    raf = 0;
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    if (mode === "coast") {
+      // 관성: 놓은 속도로 돌다가 마찰로 감속, 충분히 느려지면 스냅으로
+      rot += vel * dt;
+      vel *= Math.exp(-RING.friction * dt);
+      if (Math.abs(vel) < RING.snapSpeed) startSnap();
+    }
+    if (mode === "snap") {
+      // 임계 감쇠 스프링으로 목표 각도에 부드럽게 맞춤 (관성 속도를 이어받아 끊기지 않음)
+      const d = target - rot;
+      vel += (RING.spring * d - 2 * Math.sqrt(RING.spring) * vel) * dt;
+      rot += vel * dt;
+      if (Math.abs(d) < 1e-4 && Math.abs(vel) < 1e-3) { rot = target; vel = 0; mode = "idle"; }
+    }
+    draw();
+    if (mode === "coast" || mode === "snap") raf = requestAnimationFrame(tick);
+  }
+  // 가장 가까운 작품이 12시에 오는 각도로
+  function startSnap() {
+    const step = TAU / Math.max(1, items.length);
+    target = Math.round(rot / step) * step;
+    if (reducedMotion) { rot = target; vel = 0; mode = "idle"; draw(); return; }
+    mode = "snap";
+    kick();
+  }
+
+  // ---------- 잡고 돌리기: 원형 영역 어디든 (다이얼 · 썸네일 · 빈 곳), 마우스 · 손가락 공통 ----------
+  // 회전량 = 원 중심 기준으로 포인터가 움직인 각도 변화 (atan2)
+  let drag = null;
+  const pointerAngle = (e) => {
+    const rect = root.getBoundingClientRect();
+    const x = e.clientX - rect.left - g.cx, y = e.clientY - rect.top - g.cy;
+    // 12시 = 0, 시계 방향 + (rot과 같은 기준)
+    return { a: Math.atan2(x, -y), d: Math.hypot(x, y) };
+  };
+  root.addEventListener("pointerdown", (e) => {
+    if (drag || !items.length || (e.pointerType === "mouse" && e.button !== 0)) return;
+    const p = pointerAngle(e);
+    drag = { id: e.pointerId, a: p.a, samples: [{ t: e.timeStamp, rot }] };
+    mode = "drag";
+    vel = 0;
+    root.setPointerCapture(e.pointerId);
+    root.classList.add("dragging");
+    seenHint();
+  });
+  root.addEventListener("pointermove", (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const p = pointerAngle(e);
+    // 중심 가까이에서는 작은 움직임에도 각도가 크게 튀므로 기준 각도만 갱신
+    if (p.d > RING.deadZone) rot += wrapAngle(p.a - drag.a);
+    drag.a = p.a;
+    drag.samples.push({ t: e.timeStamp, rot });
+    while (drag.samples.length > 2 && e.timeStamp - drag.samples[0].t > RING.velWindow) drag.samples.shift();
+    kick();
+  });
+  function endDrag(e) {
+    if (!drag || e.pointerId !== drag.id) return;
+    // 놓는 순간의 회전 속도 (최근 구간). 멈췄다 놓았으면 0
+    const s = drag.samples, first = s[0], lastS = s[s.length - 1];
+    const span = (lastS.t - first.t) / 1000;
+    const idle = e.timeStamp - lastS.t > RING.velWindow;
+    vel = !idle && span > 0.008 ? (lastS.rot - first.rot) / span : 0;
+    vel = Math.max(-RING.maxVel, Math.min(RING.maxVel, vel));
+    drag = null;
+    root.classList.remove("dragging");
+    if (reducedMotion || Math.abs(vel) < RING.snapSpeed) startSnap();
+    else { mode = "coast"; kick(); }
+  }
+  root.addEventListener("pointerup", endDrag);
+  root.addEventListener("pointercancel", endDrag);
+
+  // ---------- 첫 방문 안내: "돌려서 둘러보기" + 곡선 화살표, 첫 조작 뒤 사라짐 (브라우저에 기억) ----------
+  const HINT_KEY = "workRingHintSeen";
+  let hintSeen = false;
+  try { hintSeen = localStorage.getItem(HINT_KEY) === "1"; } catch (_) {}
+  root.classList.toggle("hinted", hintSeen);
+  function seenHint() {
+    if (hintSeen) return;
+    hintSeen = true;
+    root.classList.add("hinted");
+    try { localStorage.setItem(HINT_KEY, "1"); } catch (_) {}
   }
 
   // 12시에 가장 가까운 작품 번호
@@ -167,6 +283,8 @@ function createRing(root) {
   function setItems(list, startIndex = 0) {
     build(list);
     rot = list.length ? -startIndex * (TAU / list.length) : 0;
+    mode = "idle";
+    vel = 0;
     root.hidden = !list.length;
     layout();
   }

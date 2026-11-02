@@ -34,7 +34,9 @@
     touch-action: none;            /* 원형 영역에서만 끌어 돌리기 (밖은 페이지 스크롤) */
     user-select: none;
     -webkit-user-select: none;
+    cursor: grab;
   }
+  .ring.dragging { cursor: grabbing; }
   .ring[hidden] { display: none; }
   .ring-items { position: absolute; inset: 0; }
   /* 작품 한 점: 원 위의 한 점에 고정, 썸네일은 그 점을 가운데로 (기울지 않음) */
@@ -49,6 +51,21 @@
   .ring-dial .dl-line { stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; }
   .ring-dial .dl-pivot { fill: currentColor; }
   .ring-dial .dl-dot { fill: currentColor; opacity: 0.3; }
+  /* 첫 방문 안내: 회전 방향 곡선 화살표 + 글자, 첫 조작 뒤 사라짐 */
+  .ring-dial .dl-arrow { fill: none; stroke: currentColor; stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; opacity: 0.45; transition: opacity 0.4s ease; }
+  .ring-hint {
+    position: absolute;
+    left: 0;
+    top: 0;
+    margin: 0;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    color: var(--text-soft);
+    white-space: nowrap;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+  }
+  .ring.hinted .dl-arrow, .ring.hinted .ring-hint { opacity: 0; }
   .ring-count {
     position: absolute;
     left: 0;
@@ -96,8 +113,10 @@
             <line class="dl-line" x1="0" y1="0" x2="0" y2="-50"></line>
           </g>
           <circle class="dl-pivot" r="3"></circle>
+          <path class="dl-arrow"></path>
         </svg>
         <p class="ring-count" aria-hidden="true"></p>
+        <p class="ring-hint" aria-hidden="true">돌려서 둘러보기</p>
         <div class="ring-items"></div>
       </div>
       <p class="empty" id="empty" hidden></p>
