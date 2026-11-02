@@ -37,6 +37,9 @@
     cursor: grab;
   }
   .ring.dragging { cursor: grabbing; }
+  .ring:focus-visible { outline: 2px solid var(--accent); outline-offset: -4px; }
+  /* 12시에 맞춰진 작품은 누르면 열림 */
+  .ring:not(.dragging) .ring-item.is-sel .ri-thumb { cursor: pointer; }
   .ring[hidden] { display: none; }
   .ring-items { position: absolute; inset: 0; }
   /* 작품 한 점: 원 위의 한 점에 고정, 썸네일은 그 점을 가운데로 (기울지 않음) */
@@ -138,7 +141,7 @@
     </div>
 
     <div id="panel" role="tabpanel">
-      <div class="ring" id="ring" hidden>
+      <div class="ring" id="ring" tabindex="0" hidden>
         <svg class="ring-dial" aria-hidden="true">
           <g class="dl-rot">
             <g class="dl-dots"></g>
@@ -152,6 +155,8 @@
         <div class="ring-items"></div>
       </div>
       <p class="empty" id="empty" hidden></p>
+      <!-- 원 위 항목과 같은 목록 (스크린리더용 · 스와치 라이트박스 열기용) -->
+      <ul class="sr-only" id="ring-links"></ul>
     </div>
   </main>
 
@@ -160,13 +165,29 @@
   <script src="assets/work-ring.js"></script>
   <script>
   // 탭·기법 필터는 주소(?tab=swatch&tech=weave,dye)에 남겨 공유·뒤로가기 시 유지
+  // 12시에 선택된 항목도 주소(?item=…)에 남겨, 상세에서 뒤로 오면 같은 항목이 선택된 상태로
   const state = {
     tab: param("tab") === "swatch" ? "swatch" : "collections",
     tech: new Set((param("tech") || "").split(",").filter((t) => t in LABELS.technique)),
+    item: param("item"),
   };
   let collections = [], projects = [], swatches = [];
   const emptyEl = document.getElementById("empty");
-  const ring = createRing(document.getElementById("ring"));
+  const linksEl = document.getElementById("ring-links");
+  const ring = createRing(document.getElementById("ring"), {
+    // 회전이 멈추면 12시 항목을 주소에 남긴다
+    onSettle(it) {
+      state.item = it.id;
+      syncUrl();
+    },
+    // 12시 항목 열기: 컬렉션 → 컬렉션 상세, 스와치 → 기존처럼 크게 + 정보 (라이트박스)
+    onOpen(it, i) {
+      state.item = it.id;
+      syncUrl();
+      if (it.href) location.href = it.href;
+      else linksEl.querySelectorAll("[data-lb]")[i]?.click();
+    },
+  });
 
   // 원형 영역이 헤더 아래 남은 높이를 채우도록 헤더 높이를 알려 준다
   function measureHeader() {
@@ -186,6 +207,8 @@
     const q = new URLSearchParams();
     if (state.tab === "swatch") q.set("tab", "swatch");
     if (state.tech.size) q.set("tech", [...state.tech].join(","));
+    if (state.item) q.set("item", state.item);
+    if (param("ringdemo")) q.set("ringdemo", param("ringdemo"));
     history.replaceState(null, "", q.toString() ? "?" + q : location.pathname);
   }
 
@@ -225,24 +248,37 @@
 
     emptyEl.hidden = !!list.length;
     emptyEl.textContent = state.tab === "swatch" ? "조건에 맞는 스와치가 없어요." : "조건에 맞는 컬렉션이 없어요.";
-    ring.setItems(list, 0);
+    // 처음 선택할 항목: 주소의 ?item, 없으면 첫 항목
+    const start = Math.max(0, list.findIndex((it) => it.id === state.item));
+    state.item = list[start]?.id || null;
+    linksEl.innerHTML = list.map((it) => it.href
+      ? `<li><a href="${esc(it.href)}">${esc(it.title)}</a></li>`
+      : `<li>${zoomable({ src: it.work.cover_image, alt: it.title, ratio: "1 / 1", label: "", caption: `${it.title} · ${it.year}`, info: swatchInfo(it.work), group: "swatch" })}</li>`).join("");
+    ring.setItems(list, start);
+    syncUrl();
   }
+  // 스와치 라이트박스 정보: 기법 · 섬유 · 크기 · 메모 (기존과 같음)
+  const swatchInfo = (w) => [w.techniques.map((t) => LABELS.technique[t]).join(" · "), w.fiber, w.size, w.description]
+    .filter(Boolean).join("  /  ");
 
   document.querySelectorAll("[data-tab]").forEach((b) => b.addEventListener("click", () => {
     state.tab = b.dataset.tab;
-    syncUrl(); render();
+    state.item = null;
+    render();
   }));
   // 탭 사이를 ←/→로 이동
   document.querySelector(".tabs").addEventListener("keydown", (e) => {
     if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
     state.tab = state.tab === "swatch" ? "collections" : "swatch";
-    syncUrl(); render();
+    state.item = null;
+    render();
     document.getElementById("tab-" + state.tab).focus();
   });
   document.querySelectorAll("[data-tech]").forEach((b) => b.addEventListener("click", () => {
     const t = b.dataset.tech;
     state.tech.has(t) ? state.tech.delete(t) : state.tech.add(t);
-    syncUrl(); render();
+    state.item = null;
+    render();
   }));
 
   Promise.all([DB.collections(), DB.works("project"), DB.works("swatch")]).then(([c, p, s]) => {

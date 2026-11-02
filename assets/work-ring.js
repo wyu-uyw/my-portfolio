@@ -35,6 +35,10 @@ const RING = {
   friction: 3.2,          // 관성 감속 (클수록 빨리 멈춤, 1/s)
   snapSpeed: 1.6,         // 이 속도(rad/s) 아래로 느려지면 가장 가까운 작품을 12시로 맞추기 시작
   spring: 140,            // 스냅 스프링 세기 (임계 감쇠라 넘치지 않음)
+  // 클릭 · 휠
+  clickMove: 6,           // 이동이 이보다 작고 (px)
+  clickMs: 250,           // 이보다 짧게 눌렀다 떼면 클릭 (ms)
+  wheelStep: 60,          // 휠 이만큼(px)마다 한 칸 (트랙패드의 잔 움직임은 모아서)
 };
 
 const TAU = Math.PI * 2;
@@ -45,7 +49,9 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 const smooth = (x) => (x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x));
 
 // items: [{ id, title, src, ratio(가로/세로, 이미지 없을 때), ... }]
-function createRing(root) {
+// opts.onOpen(item) — 12시 작품을 열 때 (선택된 작품 클릭 · Enter)
+// opts.onSettle(item) — 회전이 멈춰 12시 작품이 정해졌을 때 (주소에 남기기 등)
+function createRing(root, opts = {}) {
   const layer = root.querySelector(".ring-items");
   const dial = root.querySelector(".ring-dial");
   const dialRot = dial.querySelector(".dl-rot");
@@ -202,6 +208,9 @@ function createRing(root) {
       const k = smooth(1 - d / range);
       if (k === it.k) continue;          // 선택 범위 밖에서 계속 0이면 건드리지 않음
       it.k = k;
+      // 12시에 맞춰진 작품: 누르면 열린다는 표시 (커서)
+      const on = k > 0.98;
+      if (on !== it.on) { it.on = on; it.el.classList.toggle("is-sel", on); }
       const s = 1 + (g.sel - 1) * k;
       it.thumbEl.style.transform = k ? `scale(${s.toFixed(4)})` : "";
       // 제목 · 정보는 선택 범위 끝 쪽에서는 보이지 않다가 12시에 가까워질수록 나타남
@@ -243,7 +252,8 @@ function createRing(root) {
       const d = target - rot;
       vel += (RING.spring * d - 2 * Math.sqrt(RING.spring) * vel) * dt;
       rot += vel * dt;
-      if (Math.abs(d) < 1e-4 && Math.abs(vel) < 1e-3) { rot = target; vel = 0; mode = "idle"; }
+      // 0.0005rad ≈ 원 위 0.1px — 눈에 보이지 않는 꼬리는 기다리지 않고 맞춘다
+      if (Math.abs(d) < 5e-4 && Math.abs(vel) < 5e-3) { rot = target; vel = 0; mode = "idle"; settled(); }
     }
     draw();
     if (mode === "coast" || mode === "snap") raf = requestAnimationFrame(tick);
@@ -252,9 +262,39 @@ function createRing(root) {
   function startSnap() {
     const step = TAU / Math.max(1, items.length);
     target = Math.round(rot / step) * step;
-    if (reducedMotion) { rot = target; vel = 0; mode = "idle"; draw(); return; }
+    snapTo(target);
+  }
+  // 목표 각도로 스냅 (움직임 줄이기면 바로)
+  function snapTo(t) {
+    target = t;
+    if (reducedMotion) { rot = target; vel = 0; mode = "idle"; draw(); settled(); return; }
     mode = "snap";
     kick();
+  }
+  // i번 작품이 12시에 오도록 가장 짧은 방향으로
+  function goTo(i) {
+    const step = TAU / Math.max(1, items.length);
+    snapTo(rot + wrapAngle(-i * step - rot));
+  }
+  // 한 칸씩 (dir +1 = 다음 작품). 이어서 누르면 목표에 쌓인다
+  function stepBy(dir) {
+    if (!items.length) return;
+    const step = TAU / items.length;
+    const base = mode === "snap" ? target : Math.round(rot / step) * step;
+    seenHint();
+    snapTo(base - dir * step);
+  }
+  function settled() {
+    const i = selected();
+    if (i >= 0 && opts.onSettle) opts.onSettle(items[i], i);
+  }
+  // 12시에 (거의) 정확히 와 있는 작품만 '선택됨'으로 열 수 있다
+  function isSettledAt(i) {
+    const step = TAU / Math.max(1, items.length);
+    return i === selected() && Math.abs(wrapAngle(i * step + rot)) < step * 0.25;
+  }
+  function open(i) {
+    if (opts.onOpen) opts.onOpen(items[i], i);
   }
 
   // ---------- 잡고 돌리기: 원형 영역 어디든 (다이얼 · 썸네일 · 빈 곳), 마우스 · 손가락 공통 ----------
@@ -269,7 +309,12 @@ function createRing(root) {
   root.addEventListener("pointerdown", (e) => {
     if (drag || !items.length || (e.pointerType === "mouse" && e.button !== 0)) return;
     const p = pointerAngle(e);
-    drag = { id: e.pointerId, a: p.a, samples: [{ t: e.timeStamp, rot }] };
+    const hitEl = e.target.closest(".ring-item");
+    drag = {
+      id: e.pointerId, a: p.a, samples: [{ t: e.timeStamp, rot }],
+      x0: e.clientX, y0: e.clientY, t0: e.timeStamp, moved: 0,
+      hit: hitEl ? items.findIndex((it) => it.el === hitEl) : -1,
+    };
     mode = "drag";
     vel = 0;
     root.setPointerCapture(e.pointerId);
@@ -278,6 +323,7 @@ function createRing(root) {
   });
   root.addEventListener("pointermove", (e) => {
     if (!drag || e.pointerId !== drag.id) return;
+    drag.moved = Math.max(drag.moved, Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0));
     const p = pointerAngle(e);
     // 중심 가까이에서는 작은 움직임에도 각도가 크게 튀므로 기준 각도만 갱신
     if (p.d > RING.deadZone) rot += wrapAngle(p.a - drag.a);
@@ -288,6 +334,16 @@ function createRing(root) {
   });
   function endDrag(e) {
     if (!drag || e.pointerId !== drag.id) return;
+    // 클릭: 조금만 움직이고 짧게 눌렀다 뗌 → 선택된 작품이면 열기, 아니면 그 작품을 12시로
+    if (e.type === "pointerup" && drag.moved < RING.clickMove && e.timeStamp - drag.t0 < RING.clickMs) {
+      const hit = drag.hit;
+      drag = null;
+      root.classList.remove("dragging");
+      if (hit < 0) startSnap();
+      else if (isSettledAt(hit)) { startSnap(); open(hit); }
+      else goTo(hit);
+      return;
+    }
     // 놓는 순간의 회전 속도 (최근 구간). 멈췄다 놓았으면 0
     const s = drag.samples, first = s[0], lastS = s[s.length - 1];
     const span = (lastS.t - first.t) / 1000;
@@ -301,6 +357,33 @@ function createRing(root) {
   }
   root.addEventListener("pointerup", endDrag);
   root.addEventListener("pointercancel", endDrag);
+
+  // ---------- 휠 · 키보드: 한 칸씩 ----------
+  let wheelAcc = 0, wheelAt = 0;
+  root.addEventListener("wheel", (e) => {
+    if (!items.length || e.ctrlKey) return;          // ctrl + 휠(확대)은 브라우저에 맡김
+    e.preventDefault();
+    const px = e.deltaMode === 1 ? 40 : e.deltaMode === 2 ? innerHeight : 1;
+    if (e.timeStamp - wheelAt > 200) wheelAcc = 0;   // 잠시 멈췄다 다시 굴리면 새로 셈
+    wheelAt = e.timeStamp;
+    const d = (Math.abs(e.deltaY) >= Math.abs(e.deltaX) ? e.deltaY : e.deltaX) * px;
+    // 마우스 휠 한 눈금(큰 값) = 한 칸, 트랙패드의 잔 움직임은 모아서 한 칸
+    if (Math.abs(d) >= RING.wheelStep) { wheelAcc = 0; stepBy(Math.sign(d)); return; }
+    wheelAcc += d;
+    while (Math.abs(wheelAcc) >= RING.wheelStep) {
+      const dir = Math.sign(wheelAcc);
+      wheelAcc -= dir * RING.wheelStep;
+      stepBy(dir);
+    }
+  }, { passive: false });
+  root.addEventListener("keydown", (e) => {
+    if (!items.length) return;
+    if (e.key === "ArrowRight" || e.key === "ArrowDown") stepBy(1);
+    else if (e.key === "ArrowLeft" || e.key === "ArrowUp") stepBy(-1);
+    else if (e.key === "Enter") { const i = selected(); if (isSettledAt(i)) open(i); else goTo(i); }
+    else return;
+    e.preventDefault();
+  });
 
   // ---------- 첫 방문 안내: "돌려서 둘러보기" + 곡선 화살표, 첫 조작 뒤 사라짐 (브라우저에 기억) ----------
   const HINT_KEY = "workRingHintSeen";
@@ -331,5 +414,5 @@ function createRing(root) {
   }
 
   addEventListener("resize", layout);
-  return { setItems, layout, selected };
+  return { setItems, layout, selected, goTo, current: () => items[selected()] };
 }
