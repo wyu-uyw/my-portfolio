@@ -66,6 +66,8 @@ function createRing(root, opts = {}) {
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   let items = [];
+  let uid = 0;
+  let activeEl = null;   // 스크린리더에 알리는 현재 선택 항목 (aria-activedescendant)
   let rot = 0;
   // 움직임 상태: idle(정지) · drag(잡고 돌리는 중) · coast(관성) · snap(12시로 맞추는 중)
   let mode = "idle", vel = 0, target = 0;
@@ -92,11 +94,15 @@ function createRing(root, opts = {}) {
       if (prev) { reuse.delete(data.id); return prev; }
       const el = document.createElement("div");
       el.className = "ring-item";
+      el.id = "ri-" + (++uid);
+      el.setAttribute("role", "option");
+      el.setAttribute("aria-selected", "false");
+      el.setAttribute("aria-label", [data.title, data.year, ...(data.tags || [])].filter(Boolean).join(", "));
       const thumbEl = document.createElement("div");
       thumbEl.className = "ri-thumb";
       if (data.src) {
         const img = document.createElement("img");
-        img.alt = data.title;
+        img.alt = "";              // 이름은 항목(option)이 알려 줌
         img.loading = "lazy";
         img.decoding = "async";
         img.draggable = false;
@@ -110,8 +116,6 @@ function createRing(root, opts = {}) {
         // 이미지가 없으면 하위 페이지와 같은 X 스티치 자리 표시
         const ph = document.createElement("div");
         ph.className = "ph";
-        ph.setAttribute("role", "img");
-        ph.setAttribute("aria-label", data.title + " (이미지 준비 중)");
         thumbEl.append(ph);
       }
       // 선택 상태일 때만 보이는 제목(위) · 정보(아래): 연도 · 기법 태그 · 한 줄 설명
@@ -217,6 +221,12 @@ function createRing(root, opts = {}) {
       // 12시에 맞춰진 작품: 누르면 열린다는 표시 (커서)
       const on = k > 0.98;
       if (on !== it.on) { it.on = on; it.el.classList.toggle("is-sel", on); }
+      // 확대될 때 처음 한 번만 큰 이미지로 바꿔 끼움 (작은 썸네일 주소가 따로 있을 때)
+      if (k > 0.3 && it.srcLarge && it.srcLarge !== it.src && !it.upgraded) {
+        it.upgraded = true;
+        const img = it.thumbEl.querySelector("img");
+        if (img) { const big = new Image(); big.onload = () => { img.src = it.srcLarge; }; big.src = it.srcLarge; }
+      }
       const s = 1 + (g.sel - 1) * k;
       it.thumbEl.style.transform = k ? `scale(${s.toFixed(4)})` : "";
       // 제목 · 정보는 선택 범위 끝 쪽에서는 보이지 않다가 12시에 가까워질수록 나타남
@@ -236,8 +246,17 @@ function createRing(root, opts = {}) {
     }
     // 다이얼 직선 · 눈금은 원 전체의 회전 각도를 그대로 따라 돈다
     dialRot.style.transform = `rotate(${rot.toFixed(4)}rad)`;
-    const label = `${String(selected() + 1).padStart(2, "0")} / ${String(n).padStart(2, "0")}`;
+    const sel = selected();
+    const label = `${String(sel + 1).padStart(2, "0")} / ${String(n).padStart(2, "0")}`;
     if (label !== count.textContent) count.textContent = label;
+    // 스크린리더: 지금 12시 항목을 알림
+    const act = items[sel]?.el;
+    if (act !== activeEl) {
+      activeEl?.setAttribute("aria-selected", "false");
+      act?.setAttribute("aria-selected", "true");
+      if (act) root.setAttribute("aria-activedescendant", act.id);
+      activeEl = act;
+    }
   }
 
   // ---------- 움직임: requestAnimationFrame 루프 하나 (멈추면 루프도 멈춤) ----------

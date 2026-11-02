@@ -48,7 +48,6 @@
   /* 작품 이미지에는 색 보정 · 필터를 넣지 않는다 */
   .ri-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; border: 1px solid var(--line); }
   .ri-thumb .ph { width: 100%; height: 100%; aspect-ratio: auto; background-color: color-mix(in srgb, var(--text) 9%, var(--bg)); }
-  .ri-thumb { will-change: transform; }
   /* 선택 상태(12시)일 때만: 위에 제목, 아래에 연도 · 기법 태그 · 한 줄 설명. 위치 · 투명도는 JS가 transform · opacity로 */
   .ri-title, .ri-info {
     position: absolute;
@@ -116,6 +115,21 @@
   @media (max-width: 640px) {
     .ring { min-height: 420px; }
   }
+
+  /* 보기 방식 전환: 작은 텍스트 버튼 */
+  .work-bar .filters { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+  .view-toggle { display: flex; align-items: center; gap: 6px; font-size: 13px; letter-spacing: 0.08em; color: var(--text-faint); }
+  .view-toggle button { font: inherit; padding: 4px 2px; border: 0; background: none; color: var(--text-soft); cursor: pointer; border-bottom: 1px solid transparent; }
+  .view-toggle button:hover { color: var(--text); }
+  .view-toggle button[aria-pressed="true"] { color: var(--text); border-bottom-color: var(--text); font-weight: 500; }
+
+  /* 목록 보기: 회전 없이 한눈에 — 썸네일 + 제목 + 정보 */
+  .list-view { width: 100%; max-width: var(--max); margin: 28px auto 80px; display: grid; gap: 36px 20px; grid-template-columns: repeat(auto-fill, minmax(min(46%, 200px), 1fr)); }
+  .list-view[hidden] { display: none; }
+  .lv-title { margin: 12px 0 4px; font-size: 17px; font-weight: 400; }
+  .card:hover .lv-title { color: var(--accent); }
+  .lv-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 6px; }
+  .lv-desc { margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--text-soft); }
 </style>
 </head>
 <body data-page="work" data-title="Work">
@@ -137,11 +151,15 @@
           <button class="chip" type="button" data-tech="dye">Dye</button>
           <button class="chip" type="button" data-tech="manipulation">Manipulation</button>
         </div>
+        <!-- 빨리 훑어보는 방문자를 위한 대체 경로: 원형 / 목록 -->
+        <div class="view-toggle" role="group" aria-label="보기 방식">
+          <button type="button" data-view="ring">원형</button><span aria-hidden="true">/</span><button type="button" data-view="list">목록</button>
+        </div>
       </div>
     </div>
 
     <div id="panel" role="tabpanel">
-      <div class="ring" id="ring" tabindex="0" hidden>
+      <div class="ring" id="ring" tabindex="0" role="listbox" aria-label="작품 원형 진열 — ←/→로 돌리고 Enter로 열기" hidden>
         <svg class="ring-dial" aria-hidden="true">
           <g class="dl-rot">
             <g class="dl-dots"></g>
@@ -154,6 +172,7 @@
         <p class="ring-hint" aria-hidden="true">돌려서 둘러보기</p>
         <div class="ring-items"></div>
       </div>
+      <div class="list-view" id="list" hidden></div>
       <p class="empty" id="empty" hidden></p>
       <!-- 원 위 항목과 같은 목록 (스크린리더용 · 스와치 라이트박스 열기용) -->
       <ul class="sr-only" id="ring-links"></ul>
@@ -173,8 +192,14 @@
   };
   let collections = [], projects = [], swatches = [];
   const emptyEl = document.getElementById("empty");
+  const ringEl = document.getElementById("ring");
+  const listEl = document.getElementById("list");
+  // 보기 방식(원형 / 목록)은 브라우저에 기억
+  const VIEW_KEY = "workView";
+  let view = "ring";
+  try { if (localStorage.getItem(VIEW_KEY) === "list") view = "list"; } catch (_) {}
   const linksEl = document.getElementById("ring-links");
-  const ring = createRing(document.getElementById("ring"), {
+  const ring = createRing(ringEl, {
     // 회전이 멈추면 12시 항목을 주소에 남긴다
     onSettle(it) {
       state.item = it.id;
@@ -200,7 +225,7 @@
   // 선택한 기법 중 하나라도 쓰면 통과 (OR). 선택이 없으면 전부.
   const usesTech = (techniques) => !state.tech.size || techniques.some((t) => state.tech.has(t));
   const firstSentence = (text) => (paragraphs(text)[0] || "").split(/(?<=[.。!?])\s/)[0];
-  // 썸네일 주소 — 지금은 원본. 작은 썸네일을 만들게 되면 여기만 바꾼다
+  // 썸네일 주소 — 지금은 원본. 작은 썸네일을 만들게 되면 여기만 바꾼다 (12시로 확대될 때는 srcLarge = 원본으로 교체)
   const thumbSrc = (src) => src || null;
 
   function syncUrl() {
@@ -218,7 +243,7 @@
       // 컬렉션 안 작품들의 기법을 모아서 거르기 · 정보 표시
       const techs = [...new Set(projects.filter((w) => w.collection_id === c.id).flatMap((w) => w.techniques))];
       return {
-        id: c.id, title: c.title, src: thumbSrc(c.cover_image), ratio: 4 / 5,
+        id: c.id, title: c.title, src: thumbSrc(c.cover_image), srcLarge: c.cover_image, ratio: 4 / 5,
         year: c.year, techs, tags: techs.map((t) => LABELS.technique[t]), desc: firstSentence(c.concept),
         href: `collection.html?id=${encodeURIComponent(c.id)}`, featured: c.is_featured,
       };
@@ -226,7 +251,7 @@
   }
   function swatchItems() {
     return swatches.filter((w) => usesTech(w.techniques)).map((w) => ({
-      id: w.id, title: w.title, src: thumbSrc(w.cover_image), ratio: 1,
+      id: w.id, title: w.title, src: thumbSrc(w.cover_image), srcLarge: w.cover_image, ratio: 1,
       year: w.year, techs: w.techniques, tags: w.techniques.map((t) => LABELS.technique[t]), desc: w.fiber, work: w,
     }));
   }
@@ -250,16 +275,35 @@
 
     emptyEl.hidden = !!list.length;
     emptyEl.textContent = state.tab === "swatch" ? "조건에 맞는 스와치가 없어요." : "조건에 맞는 컬렉션이 없어요.";
+    document.querySelectorAll("[data-view]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.view === view)));
     // 처음 선택할 항목: 주소의 ?item, 없으면 대표 컬렉션(처음 들어왔을 때), 없으면 첫 항목
     let start = list.findIndex((it) => it.id === state.item);
     if (start < 0 && !fromFilter) start = list.findIndex((it) => it.featured);
     start = Math.max(0, start);
     state.item = list[start]?.id || null;
+    if (view === "list") {
+      // 목록 보기: 숨은 목록 대신 보이는 격자 (스와치는 같은 라이트박스)
+      linksEl.innerHTML = "";
+      ringEl.hidden = true;
+      listEl.hidden = !list.length;
+      listEl.innerHTML = list.map(listCard).join("");
+      syncUrl();
+      return;
+    }
+    listEl.hidden = true;
+    listEl.innerHTML = "";
     linksEl.innerHTML = list.map((it) => it.href
       ? `<li><a href="${esc(it.href)}">${esc(it.title)}</a></li>`
       : `<li>${zoomable({ src: it.work.cover_image, alt: it.title, ratio: "1 / 1", label: "", caption: `${it.title} · ${it.year}`, info: swatchInfo(it.work), group: "swatch" })}</li>`).join("");
     ring.setItems(list, start, { animate });
     syncUrl();
+  }
+  // 목록 보기 한 칸: 썸네일 + 제목 + 연도 · 기법 태그 + 한 줄 설명
+  function listCard(it) {
+    const meta = `<div class="lv-meta">${it.year ? `<span class="ri-year">${esc(it.year)}</span>` : ""}${it.tags.map((t) => `<span class="tag">${esc(t)}</span>`).join("")}</div>`;
+    const text = `<h2 class="lv-title">${esc(it.title)}</h2>${meta}${it.desc ? `<p class="lv-desc">${esc(it.desc)}</p>` : ""}`;
+    if (it.href) return `<a class="card" href="${esc(it.href)}" data-item="${esc(it.id)}"><div class="frame">${media(it.src, it.title, "4 / 5", "")}</div>${text}</a>`;
+    return `<div>${zoomable({ src: it.work.cover_image, alt: it.title, ratio: "1 / 1", label: "", caption: `${it.title} · ${it.year}`, info: swatchInfo(it.work), group: "swatch" })}${text}</div>`;
   }
   // 스와치 라이트박스 정보: 기법 · 섬유 · 크기 · 메모 (기존과 같음)
   const swatchInfo = (w) => [w.techniques.map((t) => LABELS.technique[t]).join(" · "), w.fiber, w.size, w.description]
@@ -285,6 +329,18 @@
     state.item = null;
     render({ animate: true, fromFilter: true });
   }));
+
+  document.querySelectorAll("[data-view]").forEach((b) => b.addEventListener("click", () => {
+    if (view === b.dataset.view) return;
+    view = b.dataset.view;
+    try { localStorage.setItem(VIEW_KEY, view); } catch (_) {}
+    render();
+  }));
+  // 목록에서 컬렉션을 열면 그 항목을 주소에 남겨, 뒤로 와서 원형으로 바꿔도 같은 항목이 선택되게
+  listEl.addEventListener("click", (e) => {
+    const a = e.target.closest("[data-item]");
+    if (a) { state.item = a.dataset.item; syncUrl(); }
+  });
 
   Promise.all([DB.collections(), DB.works("project"), DB.works("swatch")]).then(([c, p, s]) => {
     collections = c; projects = p; swatches = s;
