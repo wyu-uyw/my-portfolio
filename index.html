@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Portfolio</title>
+<title>wyw | 포트폴리오</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
 <meta name="description" content="Portfolio">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet">
@@ -1259,6 +1260,9 @@
       }
       const u = c.mat.uniforms.fade;
       u.value += (fadeTo - u.value) * (reducedMotion ? 1 : 0.12);
+      // 펼치고 접히는 동안은 맨 앞: 다른 천 뒤에 그려지거나 깊이로 가려지지 않게 (접혀 제자리에 걸리면 원래대로)
+      c.mesh.renderOrder = c.unfold ? 1 : 0;
+      c.mat.depthTest = !c.unfold;
       updateClothMesh(c);
     }
     gl.renderer.render(gl.scene, gl.camera);
