@@ -10,32 +10,103 @@
 <link href="assets/theme.css" rel="stylesheet">
 <link href="assets/site.css" rel="stylesheet">
 <script src="assets/theme.js"></script>
+<style>
+  /* 원형 진열이 헤더 아래 남은 화면 높이를 채운다 (푸터는 그 아래로 스크롤) */
+  main.work {
+    display: flex;
+    flex-direction: column;
+    max-width: none;
+    min-height: calc(100svh - var(--header-h, 57px));
+    padding: 12px var(--gutter) 0;
+  }
+  /* 탭 · 기법 필터: 원형 영역 위에 작게 한 덩어리 */
+  .work-bar { width: 100%; max-width: var(--max); margin: 0 auto; }
+  .work-bar .tabs { margin: 0 0 12px; }
+  .work-bar .filters { margin-bottom: 0; }
+  #panel { flex: 1; display: flex; flex-direction: column; }
+
+  /* ---------- 원형 진열 ---------- */
+  .ring {
+    position: relative;
+    flex: 1;
+    min-height: 460px;
+    overflow: hidden;
+    touch-action: none;            /* 원형 영역에서만 끌어 돌리기 (밖은 페이지 스크롤) */
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .ring[hidden] { display: none; }
+  .ring-items { position: absolute; inset: 0; }
+  /* 작품 한 점: 원 위의 한 점에 고정, 썸네일은 그 점을 가운데로 (기울지 않음) */
+  .ring-item { position: absolute; left: 0; top: 0; width: 0; height: 0; will-change: transform; }
+  .ri-thumb { position: absolute; }
+  /* 작품 이미지에는 색 보정 · 필터를 넣지 않는다 */
+  .ri-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; border: 1px solid var(--line); }
+  .ri-thumb .ph { width: 100%; height: 100%; aspect-ratio: auto; background-color: color-mix(in srgb, var(--text) 9%, var(--bg)); }
+
+  /* 가운데 다이얼: 메인 레버와 같은 흰 직선 · 점 */
+  .ring-dial { position: absolute; left: 0; top: 0; overflow: visible; color: var(--lever); pointer-events: none; }
+  .ring-dial .dl-line { stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; }
+  .ring-dial .dl-pivot { fill: currentColor; }
+  .ring-dial .dl-dot { fill: currentColor; opacity: 0.3; }
+  .ring-count {
+    position: absolute;
+    left: 0;
+    top: 0;
+    margin: 0;
+    font-size: 12px;
+    letter-spacing: 0.16em;
+    color: var(--text-soft);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  @media (max-width: 640px) {
+    .ring { min-height: 420px; }
+  }
+</style>
 </head>
 <body data-page="work" data-title="Work">
-  <main>
-    <h1 class="page-title">Work</h1>
+  <main class="work">
+    <h1 class="sr-only">Work</h1>
 
-    <div class="tabs" role="tablist" aria-label="작업 구분">
-      <button class="tab" type="button" role="tab" id="tab-collections" aria-controls="panel" data-tab="collections">Collections</button>
-      <button class="tab" type="button" role="tab" id="tab-swatch" aria-controls="panel" data-tab="swatch">Swatch</button>
-    </div>
+    <div class="work-bar">
+      <div class="tabs" role="tablist" aria-label="작업 구분">
+        <button class="tab" type="button" role="tab" id="tab-collections" aria-controls="panel" data-tab="collections">Collections</button>
+        <button class="tab" type="button" role="tab" id="tab-swatch" aria-controls="panel" data-tab="swatch">Swatch</button>
+      </div>
 
-    <div class="filters">
-      <div class="chip-row" role="group" aria-label="기법 (복수 선택)">
-        <span class="chip-label">TECHNIQUE</span>
-        <button class="chip" type="button" data-tech="weave">Weave</button>
-        <button class="chip" type="button" data-tech="print">Print</button>
-        <button class="chip" type="button" data-tech="stitch">Stitch</button>
-        <button class="chip" type="button" data-tech="dye">Dye</button>
-        <button class="chip" type="button" data-tech="manipulation">Manipulation</button>
+      <div class="filters">
+        <div class="chip-row" role="group" aria-label="기법 (복수 선택)">
+          <span class="chip-label">TECHNIQUE</span>
+          <button class="chip" type="button" data-tech="weave">Weave</button>
+          <button class="chip" type="button" data-tech="print">Print</button>
+          <button class="chip" type="button" data-tech="stitch">Stitch</button>
+          <button class="chip" type="button" data-tech="dye">Dye</button>
+          <button class="chip" type="button" data-tech="manipulation">Manipulation</button>
+        </div>
       </div>
     </div>
 
-    <div id="panel" role="tabpanel"></div>
+    <div id="panel" role="tabpanel">
+      <div class="ring" id="ring" hidden>
+        <svg class="ring-dial" aria-hidden="true">
+          <g class="dl-rot">
+            <g class="dl-dots"></g>
+            <line class="dl-line" x1="0" y1="0" x2="0" y2="-50"></line>
+          </g>
+          <circle class="dl-pivot" r="3"></circle>
+        </svg>
+        <p class="ring-count" aria-hidden="true"></p>
+        <div class="ring-items"></div>
+      </div>
+      <p class="empty" id="empty" hidden></p>
+    </div>
   </main>
 
   <script src="assets/data.js"></script>
   <script src="assets/site.js"></script>
+  <script src="assets/work-ring.js"></script>
   <script>
   // 탭·기법 필터는 주소(?tab=swatch&tech=weave,dye)에 남겨 공유·뒤로가기 시 유지
   const state = {
@@ -43,11 +114,22 @@
     tech: new Set((param("tech") || "").split(",").filter((t) => t in LABELS.technique)),
   };
   let collections = [], projects = [], swatches = [];
-  const panel = document.getElementById("panel");
+  const emptyEl = document.getElementById("empty");
+  const ring = createRing(document.getElementById("ring"));
+
+  // 원형 영역이 헤더 아래 남은 높이를 채우도록 헤더 높이를 알려 준다
+  function measureHeader() {
+    const h = document.querySelector(".site-header")?.offsetHeight || 57;
+    document.documentElement.style.setProperty("--header-h", h + "px");
+  }
+  measureHeader();
+  addEventListener("resize", measureHeader);
 
   // 선택한 기법 중 하나라도 쓰면 통과 (OR). 선택이 없으면 전부.
   const usesTech = (techniques) => !state.tech.size || techniques.some((t) => state.tech.has(t));
   const firstSentence = (text) => (paragraphs(text)[0] || "").split(/(?<=[.。!?])\s/)[0];
+  // 썸네일 주소 — 지금은 원본. 작은 썸네일을 만들게 되면 여기만 바꾼다
+  const thumbSrc = (src) => src || null;
 
   function syncUrl() {
     const q = new URLSearchParams();
@@ -56,50 +138,23 @@
     history.replaceState(null, "", q.toString() ? "?" + q : location.pathname);
   }
 
-  function collectionCard(c, featured) {
-    const href = `collection.html?id=${encodeURIComponent(c.id)}`;
-    if (featured) {
-      return `
-        <a class="featured card" href="${href}">
-          <div class="frame">${media(c.cover_image, c.title, "16 / 10", "FEATURED")}</div>
-          <div>
-            <p class="kicker">Featured · ${c.year}</p>
-            <h2 class="featured-title">${esc(c.title)}</h2>
-            <p class="card-desc">${esc(firstSentence(c.concept))}</p>
-          </div>
-        </a>`;
-    }
-    return `
-      <a class="card" href="${href}">
-        <div class="frame">${media(c.cover_image, c.title, "4 / 5", "COLLECTION")}</div>
-        <h2 class="card-title">${esc(c.title)}</h2>
-        <div class="card-meta">${c.year}</div>
-        <p class="card-desc">${esc(firstSentence(c.concept))}</p>
-      </a>`;
+  // 원 위에 놓을 항목: 현재 탭 + 기법 필터
+  function collectionItems() {
+    return collections.map((c) => {
+      // 컬렉션 안 작품들의 기법을 모아서 거르기 · 정보 표시
+      const techs = [...new Set(projects.filter((w) => w.collection_id === c.id).flatMap((w) => w.techniques))];
+      return {
+        id: c.id, title: c.title, src: thumbSrc(c.cover_image), ratio: 4 / 5,
+        year: c.year, techs, desc: firstSentence(c.concept),
+        href: `collection.html?id=${encodeURIComponent(c.id)}`, featured: c.is_featured,
+      };
+    }).filter((it) => usesTech(it.techs));
   }
-
-  function renderCollections() {
-    // 컬렉션 안 작품 중 하나라도 선택한 기법을 쓰면 표시
-    const shown = collections.filter((c) =>
-      usesTech(projects.filter((w) => w.collection_id === c.id).flatMap((w) => w.techniques)));
-    if (!shown.length) return `<p class="empty">조건에 맞는 컬렉션이 없어요.</p>`;
-    const featured = shown.find((c) => c.is_featured);
-    const rest = shown.filter((c) => c !== featured);
-    return (featured ? collectionCard(featured, true) : "") +
-      (rest.length ? `<div class="collections">${rest.map((c) => collectionCard(c)).join("")}</div>` : "");
-  }
-
-  function renderSwatches() {
-    const shown = swatches.filter((w) => usesTech(w.techniques));
-    if (!shown.length) return `<p class="empty">조건에 맞는 스와치가 없어요.</p>`;
-    return `<div class="swatches">${shown.map((w) => {
-      const info = [w.techniques.map((t) => LABELS.technique[t]).join(" · "), w.fiber, w.size, w.description]
-        .filter(Boolean).join("  /  ");
-      return `<figure style="margin:0">
-        ${zoomable({ src: w.cover_image, alt: w.title, ratio: "1 / 1", label: "", caption: `${w.title} · ${w.year}`, info, group: "swatch" })}
-        <figcaption class="swatch-name">${esc(w.title)}</figcaption>
-      </figure>`;
-    }).join("")}</div>`;
+  function swatchItems() {
+    return swatches.filter((w) => usesTech(w.techniques)).map((w) => ({
+      id: w.id, title: w.title, src: thumbSrc(w.cover_image), ratio: 1,
+      year: w.year, techs: w.techniques, desc: w.fiber, work: w,
+    }));
   }
 
   function render() {
@@ -108,10 +163,18 @@
       b.setAttribute("aria-selected", String(on));
       b.tabIndex = on ? 0 : -1;
     });
-    panel.setAttribute("aria-labelledby", "tab-" + state.tab);
+    document.getElementById("panel").setAttribute("aria-labelledby", "tab-" + state.tab);
     document.querySelectorAll("[data-tech]").forEach((b) =>
       b.setAttribute("aria-pressed", String(state.tech.has(b.dataset.tech))));
-    panel.innerHTML = state.tab === "swatch" ? renderSwatches() : renderCollections();
+
+    let list = state.tab === "swatch" ? swatchItems() : collectionItems();
+    // 확인용: ?ringdemo=50 → 항목을 반복해서 개수를 늘려 본다 (겹침 · 간격 확인)
+    const demo = parseInt(param("ringdemo"), 10);
+    if (demo > 0 && list.length) list = Array.from({ length: demo }, (_, i) => ({ ...list[i % list.length], id: list[i % list.length].id + "~" + i }));
+
+    emptyEl.hidden = !!list.length;
+    emptyEl.textContent = state.tab === "swatch" ? "조건에 맞는 스와치가 없어요." : "조건에 맞는 컬렉션이 없어요.";
+    ring.setItems(list, 0);
   }
 
   document.querySelectorAll("[data-tab]").forEach((b) => b.addEventListener("click", () => {
