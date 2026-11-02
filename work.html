@@ -21,8 +21,11 @@
   }
   /* 탭 · 기법 필터: 원형 영역 위에 작게 한 덩어리 */
   .work-bar { width: 100%; max-width: var(--max); margin: 0 auto; }
-  .work-bar .tabs { margin: 0 0 12px; }
+  /* 탭 줄: 왼쪽 Collections / Swatch, 오른쪽 원형 / 목록 */
+  .bar-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 12px; border-bottom: 1px solid var(--line); }
+  .work-bar .tabs { margin: 0; border-bottom: 0; }
   .work-bar .filters { margin-bottom: 0; }
+  .work-bar .filters[hidden] { display: none; }
   #panel { flex: 1; display: flex; flex-direction: column; }
 
   /* ---------- 원형 진열 ---------- */
@@ -117,8 +120,7 @@
   }
 
   /* 보기 방식 전환: 작은 텍스트 버튼 */
-  .work-bar .filters { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; }
-  .view-toggle { display: flex; align-items: center; gap: 6px; font-size: 13px; letter-spacing: 0.08em; color: var(--text-faint); }
+  .view-toggle { padding-bottom: 8px; display: flex; align-items: center; gap: 6px; font-size: 13px; letter-spacing: 0.08em; color: var(--text-faint); }
   .view-toggle button { font: inherit; padding: 4px 2px; border: 0; background: none; color: var(--text-soft); cursor: pointer; border-bottom: 1px solid transparent; }
   .view-toggle button:hover { color: var(--text); }
   .view-toggle button[aria-pressed="true"] { color: var(--text); border-bottom-color: var(--text); font-weight: 500; }
@@ -137,12 +139,19 @@
     <h1 class="sr-only">Work</h1>
 
     <div class="work-bar">
-      <div class="tabs" role="tablist" aria-label="작업 구분">
-        <button class="tab" type="button" role="tab" id="tab-collections" aria-controls="panel" data-tab="collections">Collections</button>
-        <button class="tab" type="button" role="tab" id="tab-swatch" aria-controls="panel" data-tab="swatch">Swatch</button>
+      <div class="bar-top">
+        <div class="tabs" role="tablist" aria-label="작업 구분">
+          <button class="tab" type="button" role="tab" id="tab-collections" aria-controls="panel" data-tab="collections">Collections</button>
+          <button class="tab" type="button" role="tab" id="tab-swatch" aria-controls="panel" data-tab="swatch">Swatch</button>
+        </div>
+        <!-- 빨리 훑어보는 방문자를 위한 대체 경로: 원형 / 목록 -->
+        <div class="view-toggle" role="group" aria-label="보기 방식">
+          <button type="button" data-view="ring">원형</button><span aria-hidden="true">/</span><button type="button" data-view="list">목록</button>
+        </div>
       </div>
 
-      <div class="filters">
+      <!-- 기법 필터는 목록 보기에서만 (원형 보기는 탭과 원형 / 목록 전환만 두고 간결하게) -->
+      <div class="filters" id="filters">
         <div class="chip-row" role="group" aria-label="기법 (복수 선택)">
           <span class="chip-label">TECHNIQUE</span>
           <button class="chip" type="button" data-tech="weave">Weave</button>
@@ -150,10 +159,6 @@
           <button class="chip" type="button" data-tech="stitch">Stitch</button>
           <button class="chip" type="button" data-tech="dye">Dye</button>
           <button class="chip" type="button" data-tech="manipulation">Manipulation</button>
-        </div>
-        <!-- 빨리 훑어보는 방문자를 위한 대체 경로: 원형 / 목록 -->
-        <div class="view-toggle" role="group" aria-label="보기 방식">
-          <button type="button" data-view="ring">원형</button><span aria-hidden="true">/</span><button type="button" data-view="list">목록</button>
         </div>
       </div>
     </div>
@@ -198,6 +203,8 @@
   const VIEW_KEY = "workView";
   let view = "ring";
   try { if (localStorage.getItem(VIEW_KEY) === "list") view = "list"; } catch (_) {}
+  // 작품 상세의 기법 태그(?tech=…)로 들어오면 기법 필터가 있는 목록 보기로 (저장된 보기는 바꾸지 않음)
+  if (param("tech")) view = "list";
   const linksEl = document.getElementById("ring-links");
   const ring = createRing(ringEl, {
     // 회전이 멈추면 12시 항목을 주소에 남긴다
@@ -222,8 +229,8 @@
   measureHeader();
   addEventListener("resize", measureHeader);
 
-  // 선택한 기법 중 하나라도 쓰면 통과 (OR). 선택이 없으면 전부.
-  const usesTech = (techniques) => !state.tech.size || techniques.some((t) => state.tech.has(t));
+  // 선택한 기법 중 하나라도 쓰면 통과 (OR). 선택이 없으면 전부. 기법 필터는 목록 보기에서만 (원형 보기는 항상 전부)
+  const usesTech = (techniques) => view !== "list" || !state.tech.size || techniques.some((t) => state.tech.has(t));
   const firstSentence = (text) => (paragraphs(text)[0] || "").split(/(?<=[.。!?])\s/)[0];
   // 썸네일 주소 — 지금은 원본. 작은 썸네일을 만들게 되면 여기만 바꾼다 (12시로 확대될 때는 srcLarge = 원본으로 교체)
   const thumbSrc = (src) => src || null;
@@ -231,7 +238,7 @@
   function syncUrl() {
     const q = new URLSearchParams();
     if (state.tab === "swatch") q.set("tab", "swatch");
-    if (state.tech.size) q.set("tech", [...state.tech].join(","));
+    if (state.tech.size && view === "list") q.set("tech", [...state.tech].join(","));
     if (state.item) q.set("item", state.item);
     if (param("ringdemo")) q.set("ringdemo", param("ringdemo"));
     history.replaceState(null, "", q.toString() ? "?" + q : location.pathname);
@@ -276,6 +283,7 @@
     emptyEl.hidden = !!list.length;
     emptyEl.textContent = state.tab === "swatch" ? "조건에 맞는 스와치가 없어요." : "조건에 맞는 컬렉션이 없어요.";
     document.querySelectorAll("[data-view]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.view === view)));
+    document.getElementById("filters").hidden = view !== "list";
     // 처음 선택할 항목: 주소의 ?item, 없으면 대표 컬렉션(처음 들어왔을 때), 없으면 첫 항목
     let start = list.findIndex((it) => it.id === state.item);
     if (start < 0 && !fromFilter) start = list.findIndex((it) => it.featured);
