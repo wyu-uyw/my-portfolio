@@ -45,6 +45,38 @@
   /* 작품 이미지에는 색 보정 · 필터를 넣지 않는다 */
   .ri-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; border: 1px solid var(--line); }
   .ri-thumb .ph { width: 100%; height: 100%; aspect-ratio: auto; background-color: color-mix(in srgb, var(--text) 9%, var(--bg)); }
+  .ri-thumb { will-change: transform; }
+  /* 선택 상태(12시)일 때만: 위에 제목, 아래에 연도 · 기법 태그 · 한 줄 설명. 위치 · 투명도는 JS가 transform · opacity로 */
+  .ri-title, .ri-info {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: max-content;
+    max-width: min(340px, 86vw);
+    margin: 0;
+    text-align: center;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+  .ri-title {
+    font-weight: 300;
+    font-size: clamp(20px, 2.4vw, 28px);
+    line-height: 1.2;
+    color: var(--text);
+    word-break: keep-all;
+  }
+  .ri-meta { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; }
+  .ri-year { font-size: 12px; font-weight: 500; letter-spacing: 0.16em; color: var(--accent); margin-right: 2px; }
+  .ri-desc {
+    margin: 6px 0 0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-soft);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 
   /* 가운데 다이얼: 메인 레버와 같은 흰 직선 · 점 */
   .ring-dial { position: absolute; left: 0; top: 0; overflow: visible; color: var(--lever); pointer-events: none; }
@@ -164,7 +196,7 @@
       const techs = [...new Set(projects.filter((w) => w.collection_id === c.id).flatMap((w) => w.techniques))];
       return {
         id: c.id, title: c.title, src: thumbSrc(c.cover_image), ratio: 4 / 5,
-        year: c.year, techs, desc: firstSentence(c.concept),
+        year: c.year, techs, tags: techs.map((t) => LABELS.technique[t]), desc: firstSentence(c.concept),
         href: `collection.html?id=${encodeURIComponent(c.id)}`, featured: c.is_featured,
       };
     }).filter((it) => usesTech(it.techs));
@@ -172,7 +204,7 @@
   function swatchItems() {
     return swatches.filter((w) => usesTech(w.techniques)).map((w) => ({
       id: w.id, title: w.title, src: thumbSrc(w.cover_image), ratio: 1,
-      year: w.year, techs: w.techniques, desc: w.fiber, work: w,
+      year: w.year, techs: w.techniques, tags: w.techniques.map((t) => LABELS.technique[t]), desc: w.fiber, work: w,
     }));
   }
 

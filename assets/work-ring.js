@@ -16,7 +16,12 @@ const RING = {
   selScaleMobile: 2.6,
   titleSpace: 64,         // 12시 작품 위 제목이 차지하는 높이 (원 중심을 내릴 때 계산에 씀)
   edge: 12,               // 원형 영역 가장자리 여백
-  countSpace: 50,         // 다이얼 아래 01 / 12 숫자 + 첫 방문 안내 글자가 차지하는 높이
+  infoSpace: 58,          // 12시 작품 아래 정보(연도 · 기법 · 한 줄 설명)가 차지하는 높이
+  // 선택 효과: 12시에서 이 각도(라디안, 단 작품 간격보다 넓지 않게) 안에서 크기 · 글자가 연속으로 바뀜
+  selRange: 0.6,
+  textFrom: 0.45,         // 선택 정도가 이 값을 넘어야 제목 · 정보가 나타나기 시작 (0~1)
+  textGap: 10,            // 썸네일과 제목 · 정보 사이 간격
+  countSpace: 50,        // 다이얼 아래 01 / 12 숫자 + 첫 방문 안내 글자가 차지하는 높이
   // 가운데 다이얼 (메인 레버와 같은 흰 직선)
   dialRadius: 64,         // 눈금 점이 놓이는 반지름 (원 반지름의 dialMax까지)
   dialRadiusMobile: 40,
@@ -36,6 +41,8 @@ const TAU = Math.PI * 2;
 // 각도를 -π ~ π 로
 const wrapAngle = (a) => ((((a + Math.PI) % TAU) + TAU) % TAU) - Math.PI;
 const SVG_NS = "http://www.w3.org/2000/svg";
+// 0~1로 자른 뒤 부드러운 곡선 (smoothstep)
+const smooth = (x) => (x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x));
 
 // items: [{ id, title, src, ratio(가로/세로, 이미지 없을 때), ... }]
 function createRing(root) {
@@ -65,6 +72,7 @@ function createRing(root) {
       width: it.tw + "px", height: it.th + "px",
       left: -it.tw / 2 + "px", top: -it.th / 2 + "px",
     });
+    it.k = -1;   // 크기가 바뀌었으니 다음 그리기에서 확대 · 제목 위치를 다시 계산
   }
 
   function build(list) {
@@ -83,7 +91,7 @@ function createRing(root) {
         img.src = data.src;
         // 이미지를 받으면 원래 비율로 상자를 다시 맞춘다
         img.addEventListener("load", () => {
-          if (img.naturalWidth && img.naturalHeight) { it.ratio = img.naturalWidth / img.naturalHeight; sizeThumb(it); }
+          if (img.naturalWidth && img.naturalHeight) { it.ratio = img.naturalWidth / img.naturalHeight; sizeThumb(it); draw(); }
         }, { once: true });
         thumbEl.append(img);
       } else {
@@ -94,9 +102,21 @@ function createRing(root) {
         ph.setAttribute("aria-label", data.title + " (이미지 준비 중)");
         thumbEl.append(ph);
       }
-      el.append(thumbEl);
+      // 선택 상태일 때만 보이는 제목(위) · 정보(아래): 연도 · 기법 태그 · 한 줄 설명
+      const titleEl = document.createElement("p");
+      titleEl.className = "ri-title";
+      titleEl.textContent = data.title;
+      const infoEl = document.createElement("div");
+      infoEl.className = "ri-info";
+      const meta = document.createElement("div");
+      meta.className = "ri-meta";
+      if (data.year) meta.append(Object.assign(document.createElement("span"), { className: "ri-year", textContent: data.year }));
+      (data.tags || []).forEach((t) => meta.append(Object.assign(document.createElement("span"), { className: "tag", textContent: t })));
+      infoEl.append(meta);
+      if (data.desc) infoEl.append(Object.assign(document.createElement("p"), { className: "ri-desc", textContent: data.desc }));
+      el.append(thumbEl, titleEl, infoEl);
       layer.append(el);
-      const it = { ...data, el, thumbEl, z: -1 };
+      const it = { ...data, el, thumbEl, titleEl, infoEl, z: -1, k: -1 };
       return it;
     });
     // 다이얼 눈금: 작품 수만큼, 각 작품 자리 방향
@@ -125,7 +145,9 @@ function createRing(root) {
     const belowCenter = (r) => dialR(r) + 8 + RING.countSpace + RING.edge;   // 중심 아래로 다이얼 · 숫자
     const want = g.mobile ? g.w * RING.radiusMobile : Math.min(g.w, g.h) * RING.radius;
     // 12시 작품 위쪽 ~ 다이얼 아래쪽이 원형 영역 높이에 들어가도록만 반지름을 줄인다
-    let r = want;
+    // 12시 작품 아래 정보가 가운데 다이얼 · 안내 화살표에 닿지 않을 만큼은 반지름을 확보
+    const minR = (g.thumb * g.sel) / 2 + RING.infoSpace + dialR(want) + RING.hintGap + 4;
+    let r = Math.max(want, minR);
     while (r > 40 && topNeed + r + belowCenter(r) > g.h) r -= 4;
     g.r = Math.max(40, r);
     // 원 중심: 가운데(모바일은 조금 아래), 단 12시 작품 · 제목이 위로 넘치지 않고 다이얼이 아래로 넘치지 않게
@@ -164,15 +186,34 @@ function createRing(root) {
     const n = items.length;
     if (!n) return;
     const step = TAU / n;
+    const range = Math.min(step, RING.selRange);
     for (let i = 0; i < n; i++) {
       const it = items[i];
       const a = i * step + rot;
+      const d = Math.abs(wrapAngle(a));
       const x = g.cx + g.r * Math.sin(a);
       const y = g.cy - g.r * Math.cos(a);
       it.el.style.transform = `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px)`;
       // 12시에 가까울수록 위에 (겹칠 때). 바뀔 때만 쓴다
-      const z = 1000 - Math.round(Math.abs(wrapAngle(a)) * 300);
+      const z = 1000 - Math.round(d * 300);
       if (z !== it.z) { it.el.style.zIndex = z; it.z = z; }
+
+      // 선택 정도 k (0~1): 12시에서 멀어지는 각도에 따라 연속으로 (계단식 아님)
+      const k = smooth(1 - d / range);
+      if (k === it.k) continue;          // 선택 범위 밖에서 계속 0이면 건드리지 않음
+      it.k = k;
+      const s = 1 + (g.sel - 1) * k;
+      it.thumbEl.style.transform = k ? `scale(${s.toFixed(4)})` : "";
+      // 제목 · 정보는 선택 범위 끝 쪽에서는 보이지 않다가 12시에 가까워질수록 나타남
+      const t = smooth((k - RING.textFrom) / (1 - RING.textFrom));
+      const half = (it.th * s) / 2 + RING.textGap;
+      it.titleEl.style.opacity = t;
+      it.infoEl.style.opacity = t;
+      it.titleEl.style.visibility = it.infoEl.style.visibility = t > 0 ? "visible" : "hidden";
+      if (t > 0) {
+        it.titleEl.style.transform = `translate(-50%, ${(-half).toFixed(2)}px) translateY(-100%)`;
+        it.infoEl.style.transform = `translate(-50%, ${half.toFixed(2)}px)`;
+      }
     }
     // 다이얼 직선 · 눈금은 원 전체의 회전 각도를 그대로 따라 돈다
     dialRot.style.transform = `rotate(${rot.toFixed(4)}rad)`;
