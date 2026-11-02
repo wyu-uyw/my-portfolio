@@ -4,7 +4,8 @@
 // 회전 각도(rot)는 시계 방향이 +, 작품 i는 12시에서 (i × 간격 + rot)만큼 돌아간 자리에 놓인다.
 // ==================================================================
 const RING = {
-  // 원 반지름: 데스크톱은 원형 영역 짧은 변의 34%, 모바일 세로는 폭의 40% (확대된 12시 작품이 들어갈 만큼만 줄어듦)
+  // 원 반지름: 데스크톱은 원형 영역 짧은 변의 34%, 모바일 세로는 폭의 40%
+  // (12시 작품 · 다이얼이 원형 영역 높이에 안 들어갈 때만 줄어듦. 나머지 원 경로는 잘려도 됨)
   radius: 0.34,
   radiusMobile: 0.40,
   mobileBelow: 640,       // 이 폭 미만이면 모바일 수치
@@ -15,6 +16,7 @@ const RING = {
   selScaleMobile: 2.6,
   titleSpace: 64,         // 12시 작품 위 제목이 차지하는 높이 (원 중심을 내릴 때 계산에 씀)
   edge: 12,               // 원형 영역 가장자리 여백
+  countSpace: 28,         // 다이얼 아래 01 / 12 숫자가 차지하는 높이
   // 가운데 다이얼 (메인 레버와 같은 흰 직선)
   dialRadius: 64,         // 눈금 점이 놓이는 반지름 (원 반지름의 dialMax까지)
   dialRadiusMobile: 40,
@@ -102,18 +104,23 @@ function createRing(root) {
     g.thumb = g.mobile ? RING.thumbMobile : RING.thumb;
     g.sel = g.mobile ? RING.selScaleMobile : RING.selScale;
 
-    // 12시 작품은 확대 + 위에 제목, 6시 작품은 기본 크기 → 위아래로 필요한 여백
+    // 화면 안에 꼭 들어와야 하는 것은 12시 작품(확대 + 위 제목)과 가운데 다이얼(+ 숫자)뿐.
+    // 나머지 원 경로는 화면 비율에 따라 원형 영역 밖으로 잘려도 된다.
     const topNeed = (g.thumb * g.sel) / 2 + RING.titleSpace + RING.edge;
-    const bottomNeed = g.thumb / 2 + RING.edge;
+    const dialR = (r) => Math.min(g.mobile ? RING.dialRadiusMobile : RING.dialRadius, r * RING.dialMax);
+    const belowCenter = (r) => dialR(r) + 8 + RING.countSpace + RING.edge;   // 중심 아래로 다이얼 · 숫자
     const want = g.mobile ? g.w * RING.radiusMobile : Math.min(g.w, g.h) * RING.radius;
-    g.r = Math.max(40, Math.min(want, (g.h - topNeed - bottomNeed) / 2, g.w / 2 - g.thumb / 2 - RING.edge));
-    // 원 중심: 가운데(모바일은 조금 아래), 단 12시 작품 · 제목이 위로 넘치지 않고 6시 작품이 아래로 넘치지 않게
+    // 12시 작품 위쪽 ~ 다이얼 아래쪽이 원형 영역 높이에 들어가도록만 반지름을 줄인다
+    let r = want;
+    while (r > 40 && topNeed + r + belowCenter(r) > g.h) r -= 4;
+    g.r = Math.max(40, r);
+    // 원 중심: 가운데(모바일은 조금 아래), 단 12시 작품 · 제목이 위로 넘치지 않고 다이얼이 아래로 넘치지 않게
     const ideal = g.h / 2 + (g.mobile ? g.h * RING.mobileDrop : 0);
     g.cx = g.w / 2;
-    g.cy = Math.min(Math.max(ideal, topNeed + g.r), g.h - bottomNeed - g.r);
+    g.cy = Math.min(Math.max(ideal, topNeed + g.r), g.h - belowCenter(g.r));
 
     // 다이얼
-    const dr = Math.min(g.mobile ? RING.dialRadiusMobile : RING.dialRadius, g.r * RING.dialMax);
+    const dr = dialR(g.r);
     const box = dr + 8;
     dial.setAttribute("width", box * 2);
     dial.setAttribute("height", box * 2);
